@@ -109,6 +109,20 @@ Colonnes waldec utilisées : `id` (n° RNA), `titre`/`titre_court`, `objet`,
    (endpoint CSV `/search/csv/`, adapté au volume ~1,5 M d'assos) ou unitaire.
 5. **Upsert** par `rna_id` (idempotent ; ne perd pas une position déjà géocodée).
 
+### Récupération automatique (GitHub Actions)
+
+L'environnement de dev a un réseau en liste blanche (data.gouv inaccessible).
+Le workflow [`fetch-rna.yml`](.github/workflows/fetch-rna.yml) télécharge le
+fichier sur les **runners GitHub** (réseau ouvert), le **filtre sur le périmètre
+couvert**, le compresse et committe `data/rna/rna_covered.csv.gz` (mensuel + à la
+demande). L'importeur lit ce `.gz` directement :
+
+```bash
+pnpm import:rna -- --file data/rna/rna_covered.csv.gz && pnpm search:reindex
+```
+
+### Import manuel
+
 ```bash
 # 1. Télécharger le fichier agrégé waldec (CSV) depuis le dataset ci-dessus
 #    dans data/rna/ (réseau ouvert requis), puis :

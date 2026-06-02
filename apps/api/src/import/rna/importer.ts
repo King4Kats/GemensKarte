@@ -1,4 +1,5 @@
 import * as fs from "node:fs";
+import * as zlib from "node:zlib";
 import { parse } from "csv-parse";
 import { parse as parseSync } from "csv-parse/sync";
 import { Pool } from "pg";
@@ -239,19 +240,21 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
     }
   };
 
-  const parser = fs
-    .createReadStream(opts.file, { encoding })
-    .pipe(
-      parse({
-        columns: true,
-        delimiter: ";",
-        relax_quotes: true,
-        relax_column_count: true,
-        skip_empty_lines: true,
-        trim: true,
-        bom: true,
-      }),
-    );
+  // Lit le CSV (ou .csv.gz) ; csv-parse décode les octets selon `encoding`.
+  const fileStream = fs.createReadStream(opts.file);
+  const input = opts.file.endsWith(".gz") ? fileStream.pipe(zlib.createGunzip()) : fileStream;
+  const parser = input.pipe(
+    parse({
+      columns: true,
+      delimiter: ";",
+      encoding,
+      relax_quotes: true,
+      relax_column_count: true,
+      skip_empty_lines: true,
+      trim: true,
+      bom: true,
+    }),
+  );
 
   let batch: MappedRow[] = [];
   for await (const row of parser as AsyncIterable<Record<string, string>>) {
