@@ -48,6 +48,9 @@ async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.sample && !opts.file) {
     opts.file = path.join(__dirname, "..", "data", "rna-sample.csv");
+  } else if (opts.file && !path.isAbsolute(opts.file)) {
+    // pnpm exécute le script depuis apps/api ; on résout --file depuis le dossier d'appel.
+    opts.file = path.resolve(process.env.INIT_CWD || process.cwd(), opts.file);
   }
   if (!opts.file) {
     console.error("Usage : pnpm import:rna -- --file <chemin.csv> [--covered-only] [--encoding latin1] [--limit N] [--no-geocode|--geocode-single]");

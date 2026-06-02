@@ -113,9 +113,10 @@ Colonnes waldec utilisées : `id` (n° RNA), `titre`/`titre_court`, `objet`,
 
 L'environnement de dev a un réseau en liste blanche (data.gouv inaccessible).
 Le workflow [`fetch-rna.yml`](.github/workflows/fetch-rna.yml) télécharge le
-fichier sur les **runners GitHub** (réseau ouvert), le **filtre sur le périmètre
-couvert**, le compresse et committe `data/rna/rna_covered.csv.gz` (mensuel + à la
-demande). L'importeur lit ce `.gz` directement :
+fichier national (~1,2 Go) sur les **runners GitHub** (réseau ouvert), le
+**filtre sur le périmètre couvert** (~358 000 associations), normalise le
+séparateur, compresse et committe `data/rna/rna_covered.csv.gz` (~54 Mo ; mensuel
++ à la demande). L'importeur lit ce `.gz` directement :
 
 ```bash
 pnpm import:rna -- --file data/rna/rna_covered.csv.gz && pnpm search:reindex

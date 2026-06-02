@@ -74,10 +74,13 @@ function buildAddress(row: Record<string, string>): string {
     .trim();
 }
 
-/** Une association est dissoute si une date de dissolution réelle est renseignée. */
+/**
+ * Une association est dissoute si une date de dissolution réelle est renseignée.
+ * Le RNA utilise la sentinelle `0001-01-01` (année 1) pour "non dissoute".
+ */
 function isDissolved(row: Record<string, string>): boolean {
-  const d = pick(row, "date_disso");
-  return !!d && !/^0{2,4}([-/]0{1,2}){0,2}$/.test(d);
+  const m = pick(row, "date_disso").match(/^(\d{4})-\d{2}-\d{2}/);
+  return !!m && Number(m[1]) > 1900;
 }
 
 function csvField(value: string): string {
