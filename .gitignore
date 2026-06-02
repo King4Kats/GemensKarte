@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env
+.env
+.env.local
+.env.*.local
+
+# data dumps (RNA files are large — keep out of git)
+data/rna/*.csv
+data/rna/*.zip
+!data/rna/.gitkeep
+
+# logs / os
+*.log
+.DS_Store
+coverage/
