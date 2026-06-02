@@ -66,23 +66,42 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data/rna
+          echo "En-tête du fichier source :"
+          head -1 rna.csv
           python3 - <<'PY'
-          import csv, gzip
+          import csv, gzip, sys
+          csv.field_size_limit(10_000_000)
           keep = {"22","29","35","56",          # Bretagne
                   "44","49","53","72","85",      # Pays de la Loire
                   "14","27","50","61","76"}      # Normandie
           src = "rna.csv"
           dst = "data/rna/rna_covered.csv.gz"
+
+          # Détecte le séparateur sur la 1re ligne (l'agrégé peut être en ',' ou ';')
+          with open(src, newline="", encoding="utf-8", errors="replace") as f:
+              first = f.readline()
+          delim = ";" if first.count(";") >= first.count(",") else ","
+          print(f"séparateur détecté : {delim!r}")
+
           with open(src, newline="", encoding="utf-8", errors="replace") as f, \
                gzip.open(dst, "wt", encoding="utf-8", newline="") as out:
-              r = csv.reader(f, delimiter=";")
-              w = csv.writer(out, delimiter=";")
+              r = csv.reader(f, delimiter=delim)
+              w = csv.writer(out, delimiter=";")  # on normalise en ';' (lu par l'importeur)
               header = next(r)
+              print("colonnes :", ";".join(header))
               w.writerow(header)
-              try:
-                  i = header.index("adrs_codepostal")
-              except ValueError:
-                  raise SystemExit("colonne adrs_codepostal introuvable dans l'en-tête")
+
+              low = [h.strip().lower() for h in header]
+              cands = ["adrs_codepostal", "adresse_codepostal", "code_postal", "codepostal", "cp"]
+              i = next((low.index(c) for c in cands if c in low), None)
+              if i is None:
+                  i = next((k for k, h in enumerate(low)
+                            if "codepostal" in h or "code_postal" in h
+                            or ("postal" in h and "cod" in h)), None)
+              if i is None:
+                  raise SystemExit("colonne code postal introuvable — en-tête ci-dessus")
+              print(f"colonne code postal : {header[i]!r} (index {i})")
+
               kept = 0
               for row in r:
                   if len(row) > i and row[i][:2] in keep:
