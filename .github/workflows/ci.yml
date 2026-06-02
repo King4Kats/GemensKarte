@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "data/rna/**"
+      - "**/*.md"
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    env:
+      NODE_ENV: test
+      PORT: "3000"
+      CORS_ORIGIN: "*"
+      DATABASE_URL: postgres://gemenskarte:gemenskarte@localhost:5432/gemenskarte
+      MEILI_HOST: http://localhost:7700
+      MEILI_MASTER_KEY: devMasterKeyChangeMe
+      BAN_GEOCODER_URL: https://api-adresse.data.gouv.fr
+
+    services:
+      db:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: gemenskarte
+          POSTGRES_PASSWORD: gemenskarte
+          POSTGRES_DB: gemenskarte
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U gemenskarte -d gemenskarte"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      meilisearch:
+        image: getmeili/meilisearch:v1.11
+        env:
+          MEILI_MASTER_KEY: devMasterKeyChangeMe
+          MEILI_ENV: development
+          MEILI_NO_ANALYTICS: "true"
+        ports: ["7700:7700"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (shared + api)
+        run: pnpm -r build
+
+      - name: Attendre Meilisearch
+        run: for _ in $(seq 1 30); do curl -sf http://localhost:7700/health && break; sleep 2; done
+
+      - name: Migrations + seed + import + index
+        run: |
+          pnpm db:migrate
+          pnpm db:seed
+          pnpm import:rna -- --sample --no-geocode
+          pnpm search:reindex
+
+      - name: Démarrer l'API
+        run: |
+          nohup node apps/api/dist/main.js > /tmp/api.log 2>&1 &
+          echo "API démarrée (pid $!)"
+
+      - name: Smoke-test des endpoints
+        run: bash scripts/smoke.sh || { echo '----- API LOG -----'; cat /tmp/api.log; exit 1; }
