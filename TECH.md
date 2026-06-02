@@ -88,28 +88,48 @@ curl "http://localhost:3000/api/search/suggest?q=theat"
 
 ## Import RNA — comment ça marche
 
+Source : **Répertoire National des Associations** (Ministère de l'Intérieur),
+publié mensuellement sur data.gouv.fr. data.gouv fournit un **fichier national
+agrégé** (Waldec et Import) en **CSV** et **Parquet** — l'importeur lit le CSV.
+- Dataset : <https://www.data.gouv.fr/fr/datasets/repertoire-national-des-associations/>
+- Agrégé : <https://www.data.gouv.fr/fr/datasets/rna-agrege-a-lechelle-nationale/>
+
+Colonnes waldec utilisées : `id` (n° RNA), `titre`/`titre_court`, `objet`,
+`adrs_numvoie`/`adrs_typevoie`/`adrs_libvoie`, `adrs_codepostal`,
+`adrs_libcommune`, `siteweb`, `nature`, `date_disso`. Séparateur `;`.
+
 `apps/api/src/import/rna` :
-1. **Parse** le CSV waldec du RNA (séparateur `;`).
-2. **Classe** chaque asso dans une catégorie confetti par mots-clés
+1. **Parse** le CSV waldec en flux, par lots (mémoire bornée), encodage
+   configurable (`utf8` pour l'agrégé, `latin1` pour les anciens dumps).
+2. **Filtre** les associations dissoutes (`date_disso`) et, en option, hors
+   périmètre (`--covered-only`).
+3. **Classe** chaque asso dans une catégorie confetti par mots-clés
    (`classifier.ts`) — le RNA n'a pas de catégorie exploitable directement.
-3. **Géocode** l'adresse via la Base Adresse Nationale (ou utilise des colonnes
-   `lat`/`lng` si présentes, comme dans l'échantillon hors-ligne).
-4. **Upsert** par `rna_id` (idempotent).
+4. **Géocode** l'adresse via la **Base Adresse Nationale**, en masse par lot
+   (endpoint CSV `/search/csv/`, adapté au volume ~1,5 M d'assos) ou unitaire.
+5. **Upsert** par `rna_id` (idempotent ; ne perd pas une position déjà géocodée).
 
 ```bash
-# Télécharger un dump départemental sur data.gouv.fr (Répertoire National
-# des Associations / waldec), puis :
-pnpm import:rna -- --file data/rna/rna_waldec_44.csv --covered-only --limit 2000
+# 1. Télécharger le fichier agrégé waldec (CSV) depuis le dataset ci-dessus
+#    dans data/rna/ (réseau ouvert requis), puis :
+pnpm import:rna -- --file data/rna/rna_waldec.csv --covered-only
+
+# Ancien dump départemental Latin-1 :
+pnpm import:rna -- --file data/rna/rna_waldec_44.csv --encoding latin1
+
+# Test hors-ligne sans réseau :
+pnpm import:rna -- --sample --no-geocode
 ```
 
-Options : `--file`, `--sample`, `--limit N`, `--no-geocode`, `--covered-only`
-(ne garder que Bretagne/PdL/Normandie), `--status published|pending`, `--dry-run`.
+Options : `--file`, `--sample`, `--limit N`, `--batch-size N`,
+`--encoding utf8|latin1`, `--no-geocode` / `--geocode-single` (défaut : masse),
+`--covered-only` (Bretagne/PdL/Normandie), `--status published|pending`,
+`--dry-run`.
 
 ## Reste à faire (prochaines phases)
 
 - **Frontend** `apps/web` : React + Vite + MapLibre GL, branché sur ces endpoints
   (la liste, la carte à pins confetti, le volet de fiche).
 - **Auth + modération** des fiches `pending` (référencement).
-- **Géocodage en masse** (endpoint CSV batch de la BAN) pour les gros imports.
 - **CI** GitHub Actions (lint + build + migrations sur Postgres éphémère).
 - **Déploiement** (images Docker de l'API).
