@@ -47,10 +47,10 @@ CREATE INDEX IF NOT EXISTS assoc_status_idx  ON associations (status);
 
 -- Seed des catégories (source de vérité côté @gemenskarte/shared)
 INSERT INTO categories (id, label, emoji, color, color_soft) VALUES
-  ('eco',      'Écologie', '🌱', '#19C37D', '#E4F8EF'),
-  ('culture',  'Culture',  '🎭', '#EC2D8A', '#FCE3F0'),
-  ('sport',    'Sport',    '⚽', '#FFB020', '#FFF3DA'),
-  ('social',   'Social',   '🤝', '#3B6BFF', '#E5ECFF'),
-  ('jeunesse', 'Jeunesse', '🎓', '#8B5CF6', '#EFE9FE'),
-  ('sante',    'Santé',    '❤️', '#FF6B57', '#FFE9E5')
+  ('eco',    'Écologie',   '🌱', '#00d68f', '#E3FAF2'),
+  ('cult',   'Culture',    '🎭', '#ff2d78', '#FFE6EF'),
+  ('sport',  'Sport',      '⚽', '#ffc300', '#FFF6D9'),
+  ('social', 'Social',     '🤝', '#2b59ff', '#E6ECFF'),
+  ('soli',   'Solidarité', '🧡', '#ff5c35', '#FFE9E2'),
+  ('edu',    'Éducation',  '🎓', '#7b3ff2', '#EFE7FD')
 ON CONFLICT (id) DO NOTHING;

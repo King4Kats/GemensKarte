@@ -33,6 +33,27 @@ apps/api             API NestJS
   src/categories     Endpoint des catégories
   src/associations   Endpoints liste / carte (GeoJSON) / fiche / référencement
   src/import/rna      Pipeline d'import du RNA (CSV → géocodage → upsert)
+apps/web             Frontend React + Vite + Leaflet (DA "Confetti")
+  src/components     Icon, Logo, CatBadge, AssoCard, SearchBar, ConfettiField, AssoSheet
+  src/screens        Landing (recherche prédictive) + MapView (split carte/liste)
+  src/lib            Client API + catégories
+```
+
+## Frontend (apps/web)
+
+Recréation fidèle de la maquette **Claude Design** ("Peps, Épurée & Confetti",
+Plus Jakarta Sans, palette confetti) en React + Vite, branchée sur l'API :
+- **Landing** : héro + baseline soulignée, recherche prédictive (autocomplétion
+  Meilisearch via `/search/suggest`), chips de catégories, confettis flottants,
+  stats réelles (nombre d'assos depuis l'API).
+- **Split-screen** : liste de cards "confetti" + carte **Leaflet + CARTO**, pins
+  ronds colorés, popup au survol, filtres multi-catégories, sync liste↔carte,
+  fly-to à la sélection (données `/associations?located=true`).
+- **Fiche** : volet latéral qui glisse (bandeau coloré, stats, "ce que l'asso
+  recherche", description, contacts, réseaux, CTA). S'adapte aux champs présents.
+
+```bash
+pnpm dev:web   # http://localhost:5173 (proxy /api → :3000)
 ```
 
 ## Démarrage
@@ -143,8 +164,7 @@ Options : `--file`, `--sample`, `--limit N`, `--batch-size N`,
 
 ## Reste à faire (prochaines phases)
 
-- **Frontend** `apps/web` : React + Vite + MapLibre GL, branché sur ces endpoints
-  (la liste, la carte à pins confetti, le volet de fiche).
 - **Auth + modération** des fiches `pending` (référencement).
+- **Écran "Ajouter mon asso"** (formulaire de référencement public).
 - **CI** GitHub Actions (lint + build + migrations sur Postgres éphémère).
 - **Déploiement** (images Docker de l'API).

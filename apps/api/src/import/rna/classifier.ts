@@ -7,17 +7,22 @@ import type { CategoryId } from "@gemenskarte/shared";
  */
 const RULES: Array<{ cat: CategoryId; words: string[] }> = [
   { cat: "eco", words: ["environnement", "écologie", "ecologie", "nature", "jardin", "climat",
-    "biodiversité", "vélo", "velo", "mobilité", "déchet", "compost", "permaculture", "transition"] },
-  { cat: "culture", words: ["culture", "théâtre", "theatre", "musique", "art", "danse", "cinéma",
-    "patrimoine", "lecture", "chant", "chorale", "festival", "spectacle", "peinture", "photo"] },
+    "biodiversité", "vélo", "velo", "mobilité", "déchet", "compost", "permaculture", "transition",
+    "littoral", "rivière", "faune", "flore"] },
+  { cat: "cult", words: ["culture", "théâtre", "theatre", "musique", "art", "danse", "cinéma",
+    "patrimoine", "lecture", "chant", "chorale", "festival", "spectacle", "peinture", "photo",
+    "musée", "concert", "danse"] },
   { cat: "sport", words: ["sport", "football", "rugby", "tennis", "gymnastique", "judo", "basket",
-    "natation", "randonnée", "rando", "cyclisme", "course", "roller", "escalade", "yoga"] },
-  { cat: "jeunesse", words: ["jeunesse", "scolaire", "étudiant", "etudiant", "école", "ecole",
-    "éducation", "education", "enfance", "périscolaire", "devoirs", "formation", "apprentissage"] },
-  { cat: "sante", words: ["santé", "sante", "bien-être", "bien etre", "handicap", "médical",
-    "soin", "maladie", "secours", "sophrologie", "prévention", "aidant"] },
-  { cat: "social", words: ["solidarité", "solidarite", "social", "entraide", "humanitaire",
-    "caritative", "insertion", "précarité", "migrant", "quartier", "famille", "senior"] },
+    "natation", "randonnée", "rando", "cyclisme", "course", "roller", "escalade", "yoga",
+    "voile", "nautique", "athlétisme", "pétanque"] },
+  { cat: "edu", words: ["jeunesse", "scolaire", "étudiant", "etudiant", "école", "ecole",
+    "éducation", "education", "enfance", "périscolaire", "devoirs", "formation", "apprentissage",
+    "numérique", "code", "savoir"] },
+  { cat: "soli", words: ["solidarité", "solidarite", "humanitaire", "caritative", "insertion",
+    "précarité", "precarite", "migrant", "réemploi", "recyclerie", "anti-gaspi", "épicerie solidaire",
+    "secours", "don", "santé", "sante", "handicap", "soin", "aidant", "alimentaire"] },
+  { cat: "social", words: ["social", "entraide", "quartier", "famille", "senior", "lien social",
+    "café associatif", "voisin", "intergénérationnel", "accueil", "loisir", "amicale", "comité"] },
 ];
 
 export function classify(title: string, objet: string): CategoryId {

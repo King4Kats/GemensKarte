@@ -29,6 +29,7 @@ export const associations = pgTable("associations", {
   department: text("department"),
   region: text("region"),
   social: jsonb("social").default({}),
+  meta: jsonb("meta").default({}),
   tags: text("tags").array(),
   status: text("status").notNull().default("published"),
   source: text("source").notNull().default("manual"),

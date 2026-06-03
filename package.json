@@ -14,6 +14,7 @@
     "infra:logs": "docker compose logs -f",
     "build": "pnpm -r build",
     "dev:api": "pnpm --filter @gemenskarte/api start:dev",
+    "dev:web": "pnpm --filter @gemenskarte/web dev",
     "db:migrate": "pnpm --filter @gemenskarte/api db:migrate",
     "db:seed": "pnpm --filter @gemenskarte/api db:seed",
     "search:reindex": "pnpm --filter @gemenskarte/api search:reindex",

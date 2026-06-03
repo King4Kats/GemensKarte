@@ -1,0 +1,320 @@
+/* ============================================================
+   GemensKarte — "Peps, Épurée & Confetti"
+   Design tokens + global styles (repris de la maquette Claude Design)
+   ============================================================ */
+
+:root {
+  /* Surfaces — clean, airy */
+  --bg: #ffffff;
+  --bg-soft: #fbfbf9;
+  --bg-sunk: #f5f5f2;
+  --ink: #15151b;
+  --ink-2: #4b4b55;
+  --muted: #8b8b95;
+  --hairline: #ececec;
+  --hairline-2: #f2f2ef;
+
+  /* Confetti palette — flashy, saturated, used on badges/buttons only */
+  --c-eco: #00d68f;   /* Écologie — vert menthe peps */
+  --c-cult: #ff2d78;  /* Culture — magenta fluo */
+  --c-sport: #ffc300; /* Sport — jaune soleil */
+  --c-social: #2b59ff;/* Social — bleu électrique */
+  --c-soli: #ff5c35;  /* Solidarité — corail */
+  --c-edu: #7b3ff2;   /* Éducation — violet */
+
+  /* Brand accent */
+  --accent: #ff2d78;
+  --accent-ink: #ffffff;
+
+  /* Shape */
+  --radius: 18px;
+  --radius-sm: 12px;
+  --radius-pill: 999px;
+
+  /* Type */
+  --font: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+
+  /* Shadows — soft, never muddy */
+  --shadow-card: 0 1px 2px rgba(20,20,27,.04), 0 8px 24px rgba(20,20,27,.05);
+  --shadow-pop: 0 12px 32px rgba(20,20,27,.12), 0 2px 6px rgba(20,20,27,.06);
+  --shadow-sheet: -24px 0 60px rgba(20,20,27,.10);
+
+  --confetti-density: 1;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root { height: 100%; }
+
+button { font-family: inherit; }
+
+::selection { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+/* ---- Typography helpers ---- */
+.display {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+.eyebrow {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-radius: var(--radius-pill);
+  transition: transform .16s cubic-bezier(.34,1.56,.5,1), box-shadow .16s, background .16s, filter .16s;
+  white-space: nowrap;
+}
+.btn:active { transform: translateY(1px) scale(.99); }
+
+.btn-lg { height: 56px; padding: 0 28px; font-size: 16px; }
+.btn-md { height: 46px; padding: 0 22px; font-size: 14.5px; }
+.btn-sm { height: 34px; padding: 0 14px; font-size: 13px; }
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.btn-accent:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.btn-ink {
+  background: var(--ink);
+  color: #fff;
+}
+.btn-ink:hover { transform: translateY(-2px); box-shadow: 0 12px 26px rgba(20,20,27,.22); }
+
+.btn-ghost {
+  background: var(--bg);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--hairline);
+}
+.btn-ghost:hover { box-shadow: inset 0 0 0 1.5px var(--ink); transform: translateY(-1px); }
+
+/* ============================================================
+   Category badge — the "confetti" chip
+   ============================================================ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 11px 0 9px;
+  border-radius: var(--radius-pill);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  color: var(--cat, var(--ink));
+  background: color-mix(in srgb, var(--cat) 13%, white);
+}
+.badge .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--cat);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat) 18%, transparent);
+}
+.badge-solid {
+  color: #fff;
+  background: var(--cat);
+}
+.badge-solid.on-light { color: var(--ink); }
+.badge-solid .dot { background: rgba(255,255,255,.9); box-shadow: none; }
+.badge-solid.on-light .dot { background: rgba(0,0,0,.35); }
+
+/* ============================================================
+   Asso card — a visual "confetti"
+   ============================================================ */
+.asso-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg);
+  border: 0;
+  border-radius: var(--radius);
+  padding: 18px 18px 16px;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform .18s cubic-bezier(.34,1.4,.5,1), box-shadow .18s;
+  overflow: hidden;
+}
+.asso-card::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 5px;
+  background: var(--cat);
+  opacity: 0;
+  transition: opacity .18s;
+}
+.asso-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop);
+}
+.asso-card:hover::before { opacity: 1; }
+.asso-card.is-active {
+  box-shadow: 0 0 0 2px var(--cat), var(--shadow-pop);
+}
+.asso-card.is-active::before { opacity: 1; }
+
+.asso-card .ac-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.asso-card .ac-name {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+  margin: 0 0 5px;
+  color: var(--ink);
+}
+.asso-card .ac-blurb {
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  margin: 0;
+  text-wrap: pretty;
+}
+.asso-card .ac-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 14px;
+}
+.asso-card .ac-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.asso-card .ac-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cat);
+  border: 0;
+  background: color-mix(in srgb, var(--cat) 12%, white);
+  padding: 7px 13px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background .16s, transform .16s;
+}
+.asso-card .ac-cta:hover {
+  background: var(--cat);
+  color: #fff;
+  transform: translateX(2px);
+}
+.asso-card .ac-cta.on-light:hover { color: var(--ink); }
+
+/* ============================================================
+   Leaflet — confetti pins + clean popup
+   ============================================================ */
+.confetti-pin {
+  width: 100%; height: 100%;
+  display: grid; place-items: center;
+}
+.confetti-pin .pin-dot {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--cat);
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(20,20,27,.28), 0 0 0 1px color-mix(in srgb, var(--cat) 30%, transparent);
+  transition: transform .18s cubic-bezier(.34,1.7,.5,1);
+}
+.confetti-pin:hover .pin-dot,
+.confetti-pin.is-active .pin-dot {
+  transform: scale(1.4);
+}
+.confetti-pin.is-active .pin-dot {
+  box-shadow: 0 4px 12px rgba(20,20,27,.34), 0 0 0 4px color-mix(in srgb, var(--cat) 28%, transparent);
+}
+
+.leaflet-popup.cm-pop .leaflet-popup-content-wrapper {
+  border-radius: 14px;
+  box-shadow: var(--shadow-pop);
+  padding: 0;
+  border: 1px solid var(--hairline);
+}
+.leaflet-popup.cm-pop .leaflet-popup-content {
+  margin: 0;
+  width: 200px !important;
+}
+.leaflet-popup.cm-pop .leaflet-popup-tip { box-shadow: var(--shadow-pop); }
+.leaflet-popup.cm-pop a.leaflet-popup-close-button { display: none; }
+.cm-pop-inner { padding: 12px 13px; font-family: var(--font); }
+.cm-pop-inner .pp-cat {
+  font-size: 10.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--cat);
+  margin-bottom: 4px;
+}
+.cm-pop-inner .pp-name {
+  font-size: 14.5px; font-weight: 800; letter-spacing: -.02em; color: var(--ink);
+  line-height: 1.15; margin-bottom: 3px;
+}
+.cm-pop-inner .pp-city {
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+}
+
+.leaflet-container { font-family: var(--font); background: #eef0f2; }
+.leaflet-control-attribution { font-size: 10px; }
+
+/* ============================================================
+   Scrollbars (list)
+   ============================================================ */
+.cm-scroll { scrollbar-width: thin; scrollbar-color: var(--hairline) transparent; }
+.cm-scroll::-webkit-scrollbar { width: 10px; }
+.cm-scroll::-webkit-scrollbar-thumb {
+  background: #e3e3df; border-radius: 8px; border: 3px solid var(--bg);
+}
+.cm-scroll::-webkit-scrollbar-thumb:hover { background: #d0d0ca; }
+
+/* ============================================================
+   Confetti decor animation
+   ============================================================ */
+@keyframes cmFloat {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(calc(-1 * var(--drift, 12px))) rotate(calc(var(--r, 0deg) + 12deg)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

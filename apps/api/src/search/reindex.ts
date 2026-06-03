@@ -17,6 +17,10 @@ async function main(): Promise<void> {
     sortableAttributes: ["name"],
   });
 
+  // Purge l'index pour ne pas garder de documents supprimés (Meili ne fait pas
+  // de diff : on repart propre). Les tâches Meili sont traitées dans l'ordre.
+  await index.deleteAllDocuments();
+
   const { rows } = await pool.query<AssociationDoc>(
     `SELECT id, name, category_id AS "categoryId", description, city, department, tags
      FROM associations WHERE status = 'published'`,

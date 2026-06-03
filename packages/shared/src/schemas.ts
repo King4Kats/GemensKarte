@@ -38,6 +38,12 @@ export const Association = z.object({
   lng: z.number().nullable(),
   social: SocialLinks,
   tags: z.array(z.string()),
+  /** Métadonnées riches de fiche (présentes sur les fiches soignées, sinon null). */
+  blurb: z.string().nullable().optional(),
+  members: z.number().nullable().optional(),
+  founded: z.number().nullable().optional(),
+  needs: z.string().nullable().optional(),
+  action: z.string().nullable().optional(),
   status: AssociationStatus,
   source: z.enum(["manual", "rna"]),
   /** Distance en mètres depuis le point `near`, si fourni dans la requête. */
@@ -67,12 +73,20 @@ export const NearSchema = z
   })
   .transform(([lng, lat]) => ({ lng, lat }));
 
+/** Coerce "true"/"1" → true, sinon undefined (compatible query string). */
+const boolish = z.preprocess(
+  (v) => (v === undefined ? undefined : v === "true" || v === "1" || v === true),
+  z.boolean().optional(),
+);
+
 export const ListAssociationsQuery = z.object({
   q: z.string().trim().min(1).optional(),
   category: z.enum(CATEGORY_IDS).optional(),
   department: z.string().regex(/^\d{2,3}$/).optional(),
   bbox: BBoxSchema.optional(),
   near: NearSchema.optional(),
+  /** Ne renvoyer que les associations géolocalisées (pour la carte). */
+  located: boolish,
   page: numeric.int().min(1).default(1),
   limit: numeric.int().min(1).max(100).default(20),
 });

@@ -1,23 +1,25 @@
 /**
  * Catégories "confetti" — source de vérité partagée front/back.
- * Chaque catégorie = couleur vive + fond pastel + émoji repère.
- * (La couleur ne porte jamais seule l'info : toujours doublée émoji + label.)
+ * Palette issue de la direction artistique GemensKarte (Claude Design) :
+ * fond blanc, couleurs vives réservées aux badges/boutons/pins.
+ * `onLight` = le texte du badge plein doit être sombre (couleur claire).
  */
 export interface Category {
   id: string;
   label: string;
   emoji: string;
-  color: string; // couleur vive
-  colorSoft: string; // pastel (tags)
+  color: string; // couleur vive (hex)
+  colorSoft: string; // pastel (tags / fonds)
+  onLight: boolean; // true → badge plein avec texte sombre
 }
 
 export const CATEGORIES: readonly Category[] = [
-  { id: "eco", label: "Écologie", emoji: "🌱", color: "#19C37D", colorSoft: "#E4F8EF" },
-  { id: "culture", label: "Culture", emoji: "🎭", color: "#EC2D8A", colorSoft: "#FCE3F0" },
-  { id: "sport", label: "Sport", emoji: "⚽", color: "#FFB020", colorSoft: "#FFF3DA" },
-  { id: "social", label: "Social", emoji: "🤝", color: "#3B6BFF", colorSoft: "#E5ECFF" },
-  { id: "jeunesse", label: "Jeunesse", emoji: "🎓", color: "#8B5CF6", colorSoft: "#EFE9FE" },
-  { id: "sante", label: "Santé", emoji: "❤️", color: "#FF6B57", colorSoft: "#FFE9E5" },
+  { id: "eco",    label: "Écologie",   emoji: "🌱", color: "#00d68f", colorSoft: "#E3FAF2", onLight: true },
+  { id: "cult",   label: "Culture",    emoji: "🎭", color: "#ff2d78", colorSoft: "#FFE6EF", onLight: false },
+  { id: "sport",  label: "Sport",      emoji: "⚽", color: "#ffc300", colorSoft: "#FFF6D9", onLight: true },
+  { id: "social", label: "Social",     emoji: "🤝", color: "#2b59ff", colorSoft: "#E6ECFF", onLight: false },
+  { id: "soli",   label: "Solidarité", emoji: "🧡", color: "#ff5c35", colorSoft: "#FFE9E2", onLight: false },
+  { id: "edu",    label: "Éducation",  emoji: "🎓", color: "#7b3ff2", colorSoft: "#EFE7FD", onLight: false },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];

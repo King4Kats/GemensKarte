@@ -31,6 +31,7 @@ type Row = {
   lng: number | null;
   lat: number | null;
   social: Record<string, string> | null;
+  meta: Record<string, unknown> | null;
   tags: string[] | null;
   status: Association["status"];
   source: "manual" | "rna";
@@ -42,9 +43,12 @@ const COLS = sql`
   id, rna_id, name, slug, category_id, description, email, phone, website,
   address, postal_code, city, department, region,
   ST_X(location) AS lng, ST_Y(location) AS lat,
-  social, tags, status, source`;
+  social, meta, tags, status, source`;
 
 function mapRow(r: Row): Association {
+  const meta = (r.meta ?? {}) as {
+    blurb?: string; members?: number; founded?: number; needs?: string; action?: string;
+  };
   return {
     id: r.id,
     rnaId: r.rna_id,
@@ -63,6 +67,11 @@ function mapRow(r: Row): Association {
     lng: r.lng,
     social: { ...(r.social ?? {}), ...(r.website ? { website: r.website } : {}) },
     tags: r.tags ?? [],
+    blurb: meta.blurb ?? null,
+    members: meta.members ?? null,
+    founded: meta.founded ?? null,
+    needs: meta.needs ?? null,
+    action: meta.action ?? null,
     status: r.status,
     source: r.source,
     distanceM: r.distance_m ?? null,
@@ -93,6 +102,7 @@ export class AssociationsService {
         sql`location && ST_MakeEnvelope(${minLng}, ${minLat}, ${maxLng}, ${maxLat}, 4326)`,
       );
     }
+    if (q.located) conds.push(sql`location IS NOT NULL`);
     return sql.join(conds, sql` AND `);
   }
 
