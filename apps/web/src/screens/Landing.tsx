@@ -264,8 +264,9 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
       </section>
 
       {/* ── Section Qualité des données / Comment on scrape ── */}
-      <section style={{ padding: "96px clamp(24px, 8vw, 120px)" }}>
-        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+      <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)" }}>
+        <ConfettiField count={16} seed={23} />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 980, margin: "0 auto" }}>
 
           {/* En-tête */}
           <div style={{ textAlign: "center", maxWidth: 660, margin: "0 auto 56px" }}>
@@ -376,8 +377,9 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
       </section>
 
       {/* ── Section Espace Ressources ── */}
-      <section style={{ padding: "96px clamp(24px, 8vw, 120px)" }}>
-        <div style={{ maxWidth: 880, margin: "0 auto" }}>
+      <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)" }}>
+        <ConfettiField count={14} seed={47} />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
           {/* En-tête */}
           <div style={{ marginBottom: 48 }}>
@@ -521,8 +523,9 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
       {modal && <ContactModal mode={modal} onClose={() => setModal(null)} />}
 
       {/* ── Section Données ouvertes ── */}
-      <section id="stats" style={{ padding: "96px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
-        <div style={{ maxWidth: 880, margin: "0 auto" }}>
+      <section id="stats" style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
+        <ConfettiField count={14} seed={71} />
+        <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
           <span className="eyebrow" style={{ marginBottom: 12, display: "block" }}>Open data</span>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 12px", lineHeight: 1.1 }}>
             Transparence des données
