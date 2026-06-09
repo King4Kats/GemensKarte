@@ -1,0 +1,189 @@
+[
+  {
+    "id": "9599a6b5-3cfe-41bc-999d-b9b8c0001a3b",
+    "name": "0° BSA BOUGE SANS ACCRO",
+    "city": "Landeronde",
+    "postalCode": "85150",
+    "currentWebsite": null,
+    "error": null,
+    "website": null,
+    "website_score": 4,
+    "socials": {},
+    "mairie_listings": [],
+    "candidates": [
+      {
+        "url": "https://www.gralon.net/mairies-france/vendee/association-0-bsa-bouge-sans-accro-landeronde_W853000027.htm",
+        "host": "gralon.net",
+        "title": "0° bsa bouge sans accro association 20 ans alcools bars ... - Gralon",
+        "score": 4,
+        "name_in_domain": 0,
+        "name_in_title": 4
+      },
+      {
+        "url": "https://assoce.fr/waldec/W853000027/0-BSA-BOUGE-SANS-ACCRO",
+        "host": "assoce.fr",
+        "title": "0° BSA BOUGE SANS ACCRO (W853000027) - Assoce.fr",
+        "score": 4,
+        "name_in_domain": 0,
+        "name_in_title": 4
+      },
+      {
+        "url": "https://assoce.fr/departement/85/VENDEE/commune/85118/Landeronde",
+        "host": "assoce.fr",
+        "title": "Landeronde - Associations - Assoce.fr",
+        "score": 1,
+        "name_in_domain": 0,
+        "name_in_title": 0
+      },
+      {
+        "url": "https://landeronde.com/",
+        "host": "landeronde.com",
+        "title": "Bienvenue sur le portail de Landeronde",
+        "score": 1,
+        "name_in_domain": 0,
+        "name_in_title": 0
+      },
+      {
+        "url": "https://static.repertoiredesassociations.fr/france/pays-de-la-loire/vendee/landeronde/0-bsa-bouge-sans-accro/w853000027.html",
+        "host": "static.repertoiredesassociations.fr",
+        "title": "Répertoire des Associations",
+        "score": 0,
+        "name_in_domain": 0,
+        "name_in_title": 0
+      }
+    ],
+    "n_results": 10,
+    "elapsed_s": 2.1
+  },
+  {
+    "id": "6e5b5785-b5f2-4f00-9c15-91ea2b966b7a",
+    "name": "0FG - ASSOCIATION",
+    "city": "Lairoux",
+    "postalCode": "85400",
+    "currentWebsite": null,
+    "error": null,
+    "website": null,
+    "website_score": 1,
+    "socials": {},
+    "mairie_listings": [
+      {
+        "url": "https://toutsurmacommune.fr/france/pays-de-la-loire/vendee/lairoux/85117/associations/liste-associations/",
+        "host": "toutsurmacommune.fr",
+        "title": "Afficher toutes les associations de la commune de LAIROUX (Vendée)"
+      },
+      {
+        "url": "https://www.annuaire-mairie.fr/association-lairoux.html",
+        "host": "annuaire-mairie.fr",
+        "title": "Associations à Lairoux - Coordonnées et contact - Annuaire Mairie"
+      },
+      {
+        "url": "https://lairoux.fr/associations-communales",
+        "host": "lairoux.fr",
+        "title": "Associations Communales | Commune de LAIROUX"
+      }
+    ],
+    "candidates": [
+      {
+        "url": "http://www.assoce.fr/waldec/W851006433/0FG-ASSOCIATION",
+        "host": "assoce.fr",
+        "title": "0FG - ASSOCIATION (W851006433) - Assoce.fr",
+        "score": 1,
+        "name_in_domain": 0,
+        "name_in_title": 1
+      },
+      {
+        "url": "https://www.gralon.net/mairies-france/vendee/association-0fg-association-lairoux_W851006433.htm",
+        "host": "gralon.net",
+        "title": "0fg - association association Actions collectives civique creativite ...",
+        "score": 1,
+        "name_in_domain": 0,
+        "name_in_title": 1
+      },
+      {
+        "url": "https://ccsudvendeelittoral.vernalis.fr/lairoux/vie-pratique/associations/",
+        "host": "ccsudvendeelittoral.vernalis.fr",
+        "title": "Associations - Lairoux",
+        "score": 1,
+        "name_in_domain": 0,
+        "name_in_title": 0
+      },
+      {
+        "url": "https://repertoiredesassociations.fr/france/pays-de-la-loire/vendee/lairoux/85117.html",
+        "host": "repertoiredesassociations.fr",
+        "title": "Répertoire des Associations",
+        "score": 0,
+        "name_in_domain": 0,
+        "name_in_title": 0
+      },
+      {
+        "url": "https://annuaire-des-associations.com/D85-vendee/",
+        "host": "annuaire-des-associations.com",
+        "title": "Associations du département de Vendée",
+        "score": 0,
+        "name_in_domain": 0,
+        "name_in_title": 0
+      }
+    ],
+    "n_results": 10,
+    "elapsed_s": 1.0
+  },
+  {
+    "id": "c68f8045-875c-4878-9982-4e565d1a14fb",
+    "name": "1000 ET UNE ID",
+    "city": "Epesses",
+    "postalCode": "85590",
+    "currentWebsite": null,
+    "error": null,
+    "website": "https://www.ouest-france.fr/pays-de-la-loire/les-epesses-85590/lassociation-1000-et-une-id-ouvre-sa-boutique-ephemere-aux-epesses-7a1c4ba2-8880-11ee-a303-e87a233718ee",
+    "website_score": 4,
+    "socials": {
+      "facebook": "https://www.facebook.com/people/Association-Mille-et-Une-ID/100092309777795/",
+      "helloasso": "https://www.helloasso.com/associations/1000-et-une-id"
+    },
+    "mairie_listings": [],
+    "candidates": [
+      {
+        "url": "https://www.ouest-france.fr/pays-de-la-loire/les-epesses-85590/lassociation-1000-et-une-id-ouvre-sa-boutique-ephemere-aux-epesses-7a1c4ba2-8880-11ee-a303-e87a233718ee",
+        "host": "ouest-france.fr",
+        "title": "L'association « 1000 et Une ID » ouvre sa boutique éphémère aux Epesses",
+        "score": 4,
+        "name_in_domain": 0,
+        "name_in_title": 3
+      },
+      {
+        "url": "https://www.gralon.net/mairies-france/vendee/association-1000-et-une-id-les-epesses_W852013200.htm",
+        "host": "gralon.net",
+        "title": "1000 et une id association Promotion sauvegarde savoir-faire Les Epesses",
+        "score": 4,
+        "name_in_domain": 0,
+        "name_in_title": 3
+      },
+      {
+        "url": "https://association-artistique.autour-de-moi.com/1000-et-une-id-522610.html",
+        "host": "association-artistique.autour-de-moi.com",
+        "title": "1000 et une ID à Les Epesses | Association-artistique.autour-de-moi.com",
+        "score": 4,
+        "name_in_domain": 0,
+        "name_in_title": 3
+      },
+      {
+        "url": "https://association.tel/85-vendee/les-epesses/association-artistique/1852-1000-et-une-id.html",
+        "host": "association.tel",
+        "title": "1000 et une ID à Les Epesses | 0 AVIS | TELEPHONE - association.tel",
+        "score": 4,
+        "name_in_domain": 0,
+        "name_in_title": 3
+      },
+      {
+        "url": "http://www.assoce.fr/waldec/W852013200/1000-ET-UNE-ID",
+        "host": "assoce.fr",
+        "title": "1000 ET UNE ID (W852013200) - Assoce.fr",
+        "score": 3,
+        "name_in_domain": 0,
+        "name_in_title": 3
+      }
+    ],
+    "n_results": 10,
+    "elapsed_s": 1.4
+  }
+]

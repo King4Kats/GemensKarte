@@ -1,0 +1,12 @@
+[
+  {
+    "id": "9599a6b5-3cfe-41bc-999d-b9b8c0001a3b",
+    "name": "0° BSA BOUGE SANS ACCRO",
+    "city": "Landeronde",
+    "postalCode": "85150",
+    "currentWebsite": null,
+    "links": null,
+    "error": "ConnectError: [WinError 10061] Aucune connexion n’a pu être établie car l’ordinateur cible l’a expressément refusée",
+    "elapsed_s": 4.9
+  }
+]

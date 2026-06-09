@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GemensKarte — La carte du territoire de tes assos</title>
+<style>
+/* ======================================================================
+   GemensKarte — Prototype "Peps, Épurée & Confetti"
+   Auto-suffisant : aucune dépendance réseau. Pure CSS + vanilla JS.
+   ====================================================================== */
+
+:root{
+  /* Base — le "papier" */
+  --bg:#FDFCF9;
+  --surface:#FFFFFF;
+  --ink:#1A1A2E;
+  --ink-2:#6B7280;
+  --border:#ECEAE3;
+
+  /* Confettis — couleurs de catégories */
+  --eco:#19C37D;      --eco-soft:#E4F8EF;
+  --culture:#EC2D8A;  --culture-soft:#FCE3F0;
+  --sport:#FFB020;    --sport-soft:#FFF3DA;
+  --social:#3B6BFF;   --social-soft:#E5ECFF;
+  --jeunesse:#8B5CF6; --jeunesse-soft:#EFE9FE;
+  --sante:#FF6B57;    --sante-soft:#FFE9E5;
+
+  --radius-card:20px;
+  --radius-btn:14px;
+  --shadow-soft:0 12px 30px -12px rgba(26,26,46,.18);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Inter","Segoe UI",system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.5;
+}
+h1,h2,h3,.display,.brand{font-family:"Poppins","Inter",system-ui,sans-serif;letter-spacing:-.02em}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+a{color:inherit;text-decoration:none}
+.hidden{display:none !important}
+
+/* ---------- Top bar (global) ---------- */
+.topbar{
+  position:sticky;top:0;z-index:40;
+  display:flex;align-items:center;gap:18px;
+  padding:14px 26px;
+  background:rgba(253,252,249,.85);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:20px;cursor:pointer}
+.logo-dot{
+  width:30px;height:30px;border-radius:9px;flex:none;
+  background:
+     radial-gradient(circle at 30% 30%, var(--sport) 0 22%, transparent 23%),
+     radial-gradient(circle at 72% 38%, var(--culture) 0 18%, transparent 19%),
+     radial-gradient(circle at 40% 75%, var(--social) 0 20%, transparent 21%),
+     radial-gradient(circle at 78% 78%, var(--eco) 0 16%, transparent 17%),
+     #fff;
+  border:1.5px solid var(--border);
+  transform:rotate(-8deg);
+}
+.brand b{color:var(--ink)}
+.brand .karte{
+  background:linear-gradient(90deg,var(--social),var(--culture));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.topbar .spacer{flex:1}
+.nav-link{font-size:14px;color:var(--ink-2);padding:8px 12px;border-radius:10px}
+.nav-link:hover{background:#fff;color:var(--ink)}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-weight:600;font-size:15px;border-radius:var(--radius-btn);
+  padding:12px 20px;transition:transform .15s,box-shadow .2s,background .2s;
+}
+.btn-primary{color:#fff;background:var(--social);box-shadow:0 10px 22px -8px rgba(59,107,255,.6)}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 28px -8px rgba(59,107,255,.7)}
+.btn-primary:active{transform:translateY(0)}
+.btn-ghost{background:#fff;border:1px solid var(--border);color:var(--ink)}
+.btn-ghost:hover{transform:translateY(-2px);box-shadow:var(--shadow-soft)}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:11px}
+
+/* ====================================================================
+   1. LANDING
+   ==================================================================== */
+#landing{position:relative;overflow:hidden;min-height:calc(100vh - 60px)}
+.confetti-field{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.confetti{
+  position:absolute;border-radius:3px;opacity:.85;
+  animation:floaty 9s ease-in-out infinite;
+}
+.confetti.round{border-radius:50%}
+@keyframes floaty{
+  0%,100%{transform:translateY(0) rotate(0deg)}
+  50%{transform:translateY(-26px) rotate(40deg)}
+}
+.hero{
+  position:relative;z-index:1;
+  max-width:880px;margin:0 auto;
+  padding:72px 24px 80px;text-align:center;
+}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:#fff;border:1px solid var(--border);
+  padding:7px 16px;border-radius:999px;font-size:13px;font-weight:600;color:var(--ink-2);
+  box-shadow:var(--shadow-soft);
+}
+.eyebrow .blip{width:8px;height:8px;border-radius:50%;background:var(--eco);box-shadow:0 0 0 4px var(--eco-soft)}
+.hero h1{
+  font-size:clamp(38px,6vw,60px);line-height:1.05;margin:26px auto 0;font-weight:700;max-width:760px;
+}
+.hl{position:relative;white-space:nowrap;color:var(--culture)}
+.hl svg{position:absolute;left:0;right:0;bottom:-12px;width:100%;height:18px}
+.hero p.sub{font-size:18px;color:var(--ink-2);margin:22px auto 0;max-width:560px}
+
+/* Search bar */
+.search{
+  position:relative;z-index:2;margin:38px auto 0;max-width:680px;
+  display:flex;align-items:center;gap:6px;
+  background:#fff;border:1px solid var(--border);
+  border-radius:999px;padding:8px 8px 8px 8px;
+  box-shadow:0 24px 50px -22px rgba(59,107,255,.45), 0 8px 20px -12px rgba(236,45,138,.25);
+}
+.search .field{flex:1;display:flex;align-items:center;gap:10px;padding:10px 18px;min-width:0}
+.search .field + .field{border-left:1px solid var(--border)}
+.search .field .ic{font-size:18px;opacity:.7}
+.search input{border:none;outline:none;font-size:15px;width:100%;background:transparent;color:var(--ink)}
+.search input::placeholder{color:#9CA3AF}
+.search .field .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#9CA3AF}
+.search .col{display:flex;flex-direction:column;flex:1;min-width:0}
+.search-go{
+  flex:none;width:54px;height:54px;border-radius:50%;color:#fff;font-size:20px;
+  background:linear-gradient(135deg,var(--social),var(--culture));
+  box-shadow:0 12px 24px -8px rgba(236,45,138,.6);
+  transition:transform .15s,box-shadow .2s;
+}
+.search-go:hover{transform:scale(1.06) rotate(8deg)}
+
+/* Suggestion chips */
+.chips{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:24px auto 0;max-width:640px}
+.chip{
+  font-size:13px;font-weight:600;padding:8px 15px;border-radius:999px;
+  background:#fff;border:1px solid var(--border);color:var(--ink-2);
+  transition:transform .15s,box-shadow .2s,color .2s;
+}
+.chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-soft);color:var(--ink)}
+.chip .e{margin-right:6px}
+
+.stats{display:flex;gap:40px;justify-content:center;margin:56px auto 0;flex-wrap:wrap}
+.stat b{font-family:"Poppins",sans-serif;font-size:30px;display:block}
+.stat span{font-size:13px;color:var(--ink-2)}
+.stat .n-eco{color:var(--eco)} .stat .n-cult{color:var(--culture)} .stat .n-soc{color:var(--social)}
+
+/* ====================================================================
+   2. APP — split screen
+   ==================================================================== */
+#app{display:none;height:calc(100vh - 60px)}
+.split{display:grid;grid-template-columns:minmax(380px,40%) 1fr;height:100%}
+
+/* --- Left: list panel --- */
+.panel{display:flex;flex-direction:column;height:100%;border-right:1px solid var(--border);background:var(--bg)}
+.panel-head{padding:18px 22px 12px;border-bottom:1px solid var(--border);background:var(--surface)}
+.panel-head .mini-search{
+  display:flex;align-items:center;gap:10px;background:var(--bg);
+  border:1px solid var(--border);border-radius:14px;padding:11px 14px;
+}
+.panel-head .mini-search input{border:none;background:transparent;outline:none;width:100%;font-size:14px}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:12px 22px;background:var(--surface);border-bottom:1px solid var(--border);scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.fpill{
+  flex:none;display:inline-flex;align-items:center;gap:6px;
+  font-size:13px;font-weight:600;padding:7px 13px;border-radius:999px;
+  border:1.5px solid var(--border);background:#fff;color:var(--ink-2);
+  transition:all .15s;white-space:nowrap;
+}
+.fpill .d{width:9px;height:9px;border-radius:50%}
+.fpill.active{color:#fff;border-color:transparent}
+.list-meta{padding:14px 22px 4px;font-size:13px;color:var(--ink-2)}
+.list-meta b{color:var(--ink)}
+.list{flex:1;overflow-y:auto;padding:6px 18px 28px;display:flex;flex-direction:column;gap:14px}
+
+/* --- Association card (THE confetti) --- */
+.card{
+  position:relative;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-card);padding:16px 18px 16px 20px;overflow:hidden;
+  transition:transform .18s,box-shadow .22s;cursor:pointer;
+}
+.card::before{ /* barre latérale colorée révélée au hover */
+  content:"";position:absolute;left:0;top:0;bottom:0;width:5px;
+  background:var(--c,var(--social));transform:scaleY(0);transform-origin:top;
+  transition:transform .2s;border-radius:0 4px 4px 0;
+}
+.card:hover{transform:translateY(-4px);box-shadow:0 18px 36px -14px var(--c-shadow,rgba(59,107,255,.4))}
+.card:hover::before{transform:scaleY(1)}
+.card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.tag{
+  display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.04em;padding:5px 11px;border-radius:999px;
+  color:var(--c);background:var(--c-soft);
+}
+.fav{font-size:18px;color:#D1D5DB;transition:transform .15s,color .15s}
+.fav:hover{transform:scale(1.2);color:var(--culture)}
+.fav.on{color:var(--culture)}
+.card h3{font-size:17px;font-weight:600;line-height:1.25}
+.card .desc{font-size:14px;color:var(--ink-2);margin-top:5px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:13px}
+.card-foot .loc{font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:5px}
+.card .act{
+  font-size:13px;font-weight:600;color:var(--c);padding:6px 13px;border-radius:10px;
+  background:var(--c-soft);transition:transform .15s;
+}
+.card:hover .act{transform:translateX(2px)}
+
+/* --- Right: map --- */
+.mapwrap{position:relative;height:100%;overflow:hidden;background:#EAF3F4}
+.map-svg{position:absolute;inset:0;width:100%;height:100%}
+.map-ctrls{position:absolute;top:18px;right:18px;display:flex;flex-direction:column;gap:8px;z-index:5}
+.map-ctrl{
+  width:42px;height:42px;border-radius:12px;background:#fff;border:1px solid var(--border);
+  font-size:20px;color:var(--ink);box-shadow:var(--shadow-soft);
+  display:flex;align-items:center;justify-content:center;
+}
+.map-ctrl:hover{background:var(--bg)}
+.map-legend{
+  position:absolute;left:18px;bottom:18px;z-index:5;background:#fff;border:1px solid var(--border);
+  border-radius:16px;padding:13px 16px;box-shadow:var(--shadow-soft);font-size:12px;max-width:210px;
+}
+.map-legend b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-2);margin-bottom:8px}
+.legrow{display:flex;align-items:center;gap:7px;margin:5px 0;color:var(--ink)}
+.legrow .d{width:11px;height:11px;border-radius:50%}
+
+/* Confetti pins */
+.pin{
+  position:absolute;width:26px;height:26px;border-radius:50%;
+  border:3px solid #fff;cursor:pointer;transform:translate(-50%,-50%);
+  box-shadow:0 4px 10px -2px rgba(26,26,46,.4);z-index:3;
+  transition:transform .18s,box-shadow .18s;
+}
+.pin:hover,.pin.active{transform:translate(-50%,-50%) scale(1.28);z-index:6}
+.pin.bounce{animation:bounce .5s ease}
+@keyframes bounce{0%,100%{transform:translate(-50%,-50%) scale(1)}40%{transform:translate(-50%,-60%) scale(1.25)}}
+.pin .popup{
+  position:absolute;bottom:130%;left:50%;transform:translateX(-50%) scale(.9);
+  width:190px;background:#fff;border:1px solid var(--border);border-radius:14px;
+  padding:11px 13px;box-shadow:0 16px 34px -12px rgba(26,26,46,.35);
+  opacity:0;pointer-events:none;transition:opacity .15s,transform .15s;text-align:left;
+}
+.pin:hover .popup{opacity:1;transform:translateX(-50%) scale(1)}
+.pin .popup::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:7px solid transparent;border-top-color:#fff}
+.pin .popup h4{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:3px;line-height:1.2}
+.pin .popup .ptag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.pin .popup .pdesc{font-size:11px;color:var(--ink-2);margin-top:4px}
+
+/* ====================================================================
+   3. DRAWER — fiche association
+   ==================================================================== */
+.overlay{position:fixed;inset:0;background:rgba(26,26,46,.28);backdrop-filter:blur(2px);
+  opacity:0;pointer-events:none;transition:opacity .3s;z-index:60}
+.overlay.show{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;height:100%;width:440px;max-width:92vw;z-index:70;
+  background:var(--surface);box-shadow:-24px 0 60px -24px rgba(26,26,46,.4);
+  transform:translateX(105%);transition:transform .34s cubic-bezier(.22,1,.36,1);
+  display:flex;flex-direction:column;
+}
+.drawer.show{transform:translateX(0)}
+.drawer-head{position:relative;padding:30px 28px 26px;color:#fff;overflow:hidden}
+.drawer-head::after{content:"";position:absolute;right:-30px;bottom:-40px;width:160px;height:160px;
+  border-radius:50%;background:rgba(255,255,255,.14)}
+.drawer-head .d-tag{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.05em;background:rgba(255,255,255,.22);
+  padding:5px 12px;border-radius:999px;backdrop-filter:blur(4px)}
+.drawer-head h2{font-size:27px;margin-top:14px;line-height:1.15;position:relative;z-index:1}
+.drawer-head .d-loc{margin-top:8px;font-size:14px;opacity:.92;position:relative;z-index:1}
+.d-close{position:absolute;top:18px;right:18px;width:38px;height:38px;border-radius:50%;
+  background:rgba(255,255,255,.22);color:#fff;font-size:18px;backdrop-filter:blur(4px);
+  display:flex;align-items:center;justify-content:center;z-index:2;transition:background .15s}
+.d-close:hover{background:rgba(255,255,255,.38)}
+.drawer-body{flex:1;overflow-y:auto;padding:24px 28px}
+.sec{margin-bottom:26px}
+.sec h5{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2);margin-bottom:11px}
+.sec p{font-size:15px;color:#374151;line-height:1.6}
+.info-row{display:flex;align-items:center;gap:12px;font-size:14px;color:#374151;padding:9px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-row .ric{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+  flex:none;font-size:16px}
+.socials{display:flex;gap:10px}
+.soc{width:42px;height:42px;border-radius:13px;background:var(--bg);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:18px;transition:transform .15s,box-shadow .2s}
+.soc:hover{transform:translateY(-3px);box-shadow:var(--shadow-soft)}
+.subtags{display:flex;flex-wrap:wrap;gap:8px}
+.subtag{font-size:12px;font-weight:600;padding:6px 12px;border-radius:999px;background:var(--bg);
+  border:1px solid var(--border);color:var(--ink-2)}
+.drawer-foot{padding:16px 28px;border-top:1px solid var(--border);display:flex;gap:10px;background:var(--surface)}
+.drawer-foot .btn{flex:1}
+.btn-cat{color:#fff;background:var(--c);box-shadow:0 10px 22px -8px var(--c-shadow)}
+.btn-cat:hover{transform:translateY(-2px)}
+
+/* Responsive */
+@media(max-width:880px){
+  .split{grid-template-columns:1fr}
+  .mapwrap{display:none}
+  .search{flex-direction:column;border-radius:24px;padding:14px}
+  .search .field+.field{border-left:none;border-top:1px solid var(--border)}
+  .search .field{width:100%}
+  .search-go{width:100%;border-radius:14px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== TOP BAR ===================== -->
+<header class="topbar">
+  <div class="brand" onclick="showLanding()">
+    <span class="logo-dot"></span>
+    <span>Gemens<span class="karte">Karte</span></span>
+  </div>
+  <div class="spacer"></div>
+  <a class="nav-link" onclick="showApp()">Explorer la carte</a>
+  <a class="nav-link">Référencer mon asso</a>
+  <button class="btn btn-ghost btn-sm">Connexion</button>
+</header>
+
+<!-- ===================== 1. LANDING ===================== -->
+<section id="landing">
+  <div class="confetti-field" id="confetti" aria-hidden="true"></div>
+  <div class="hero">
+    <span class="eyebrow"><span class="blip"></span>Bretagne · Pays de la Loire · Normandie</span>
+    <h1>La carte du territoire de
+      <span class="hl">tes assos
+        <svg viewBox="0 0 220 18" preserveAspectRatio="none"><path d="M3 12 C 50 4, 150 4, 217 11" stroke="#EC2D8A" stroke-width="5" fill="none" stroke-linecap="round"/></svg>
+      </span>
+    </h1>
+    <p class="sub">Découvre, contacte et rejoins les associations locales. Chaque asso est un petit confetti qui fait vibrer ton territoire. 🎉</p>
+
+    <div class="search">
+      <div class="field">
+        <span class="ic">🔍</span>
+        <div class="col">
+          <span class="lbl">Que cherchez-vous ?</span>
+          <input placeholder="Théâtre, rando, aide aux devoirs…">
+        </div>
+      </div>
+      <div class="field">
+        <span class="ic">📍</span>
+        <div class="col">
+          <span class="lbl">Où ?</span>
+          <input placeholder="Nantes, Rennes, Caen…">
+        </div>
+      </div>
+      <button class="search-go" onclick="showApp()" title="Explorer">→</button>
+    </div>
+
+    <div class="chips">
+      <button class="chip" onclick="showApp()"><span class="e">🎭</span>Théâtre à Nantes</button>
+      <button class="chip" onclick="showApp()"><span class="e">🌱</span>Écologie à Rennes</button>
+      <button class="chip" onclick="showApp()"><span class="e">⚽</span>Sport à Caen</button>
+      <button class="chip" onclick="showApp()"><span class="e">🤝</span>Bénévolat près de moi</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b class="n-eco">4 280</b><span>associations</span></div>
+      <div class="stat"><b class="n-cult">3 régions</b><span>de l'Ouest</span></div>
+      <div class="stat"><b class="n-soc">100 %</b><span>libre & open-source</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 2. APP SPLIT-SCREEN ===================== -->
+<section id="app">
+  <div class="split">
+    <!-- LEFT : list -->
+    <div class="panel">
+      <div class="panel-head">
+        <div class="mini-search">
+          <span>🔍</span><input value="Associations à Nantes" >
+        </div>
+      </div>
+      <div class="filters" id="filters"></div>
+      <div class="list-meta"><b id="count">0</b> associations trouvées · triées par proximité</div>
+      <div class="list" id="list"></div>
+    </div>
+
+    <!-- RIGHT : map -->
+    <div class="mapwrap">
+      <svg class="map-svg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <rect width="800" height="800" fill="#EAF3F4"/>
+        <!-- water -->
+        <path d="M-20 560 C 160 520 240 660 420 620 C 600 580 720 680 820 640 L820 820 L-20 820 Z" fill="#D6EAF2"/>
+        <path d="M540 -20 C 520 120 640 180 600 320 L820 320 L820 -20 Z" fill="#D6EAF2"/>
+        <!-- green park -->
+        <ellipse cx="220" cy="250" rx="90" ry="70" fill="#E4F1E2"/>
+        <ellipse cx="640" cy="470" rx="70" ry="55" fill="#E4F1E2"/>
+        <!-- roads -->
+        <g stroke="#fff" stroke-width="14" fill="none" stroke-linecap="round">
+          <path d="M-20 200 L 820 260"/>
+          <path d="M120 -20 L 200 820"/>
+          <path d="M-20 460 L 820 430"/>
+          <path d="M560 -20 L 480 820"/>
+          <path d="M-20 660 L 820 700"/>
+        </g>
+        <g stroke="#fff" stroke-width="7" fill="none" stroke-linecap="round" opacity=".9">
+          <path d="M300 -20 L 360 820"/>
+          <path d="M-20 330 L 820 350"/>
+          <path d="M680 -20 L 640 820"/>
+        </g>
+      </svg>
+
+      <div class="map-ctrls">
+        <button class="map-ctrl">+</button>
+        <button class="map-ctrl">−</button>
+        <button class="map-ctrl" title="Ma position">⌖</button>
+      </div>
+
+      <div class="map-legend">
+        <b>Les confettis</b>
+        <div class="legrow"><span class="d" style="background:var(--eco)"></span>🌱 Écologie</div>
+        <div class="legrow"><span class="d" style="background:var(--culture)"></span>🎭 Culture</div>
+        <div class="legrow"><span class="d" style="background:var(--sport)"></span>⚽ Sport</div>
+        <div class="legrow"><span class="d" style="background:var(--social)"></span>🤝 Social</div>
+      </div>
+      <!-- pins injected here -->
+    </div>
+  </div>
+</section>
+
+<!-- ===================== 3. DRAWER ===================== -->
+<div class="overlay" id="overlay" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head" id="drawerHead">
+    <button class="d-close" onclick="closeDrawer()">✕</button>
+    <span class="d-tag" id="dTag"></span>
+    <h2 id="dName"></h2>
+    <div class="d-loc" id="dLoc"></div>
+  </div>
+  <div class="drawer-body">
+    <div class="sec">
+      <h5>À propos</h5>
+      <p id="dDesc"></p>
+    </div>
+    <div class="sec">
+      <h5>Coordonnées</h5>
+      <div id="dInfo"></div>
+    </div>
+    <div class="sec">
+      <h5>Réseaux sociaux</h5>
+      <div class="socials">
+        <a class="soc" title="Site web">🌐</a>
+        <a class="soc" title="Facebook">📘</a>
+        <a class="soc" title="Instagram">📸</a>
+        <a class="soc" title="Email">✉️</a>
+      </div>
+    </div>
+    <div class="sec">
+      <h5>Mots-clés</h5>
+      <div class="subtags" id="dSub"></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <button class="btn btn-ghost" style="flex:none">🧭 Itinéraire</button>
+    <button class="btn btn-cat" id="dCta">Contacter / Rejoindre</button>
+  </div>
+</aside>
+
+<script>
+/* ---------- Data ---------- */
+const CATS = {
+  eco:     {label:"Écologie", emoji:"🌱", color:getCss('--eco'), soft:getCss('--eco-soft')},
+  culture: {label:"Culture",  emoji:"🎭", color:getCss('--culture'), soft:getCss('--culture-soft')},
+  sport:   {label:"Sport",    emoji:"⚽", color:getCss('--sport'), soft:getCss('--sport-soft')},
+  social:  {label:"Social",   emoji:"🤝", color:getCss('--social'), soft:getCss('--social-soft')},
+  jeunesse:{label:"Jeunesse", emoji:"🎓", color:getCss('--jeunesse'), soft:getCss('--jeunesse-soft')},
+  sante:   {label:"Santé",    emoji:"❤️", color:getCss('--sante'), soft:getCss('--sante-soft')},
+};
+function getCss(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function hexA(hex,a){const n=parseInt(hex.slice(1),16);return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`}
+
+const ASSOS = [
+  {id:1, cat:"culture", name:"Les Tréteaux de l'Erdre", city:"Nantes", dist:"0,8 km",
+   desc:"Troupe de théâtre amateur ouverte à tous, ateliers d'impro le mardi soir.",
+   x:34, y:42, tel:"02 40 12 34 56", mail:"contact@treteaux-erdre.fr", addr:"12 quai de Versailles, Nantes",
+   sub:["Théâtre","Tous âges","Ateliers","Spectacles"]},
+  {id:2, cat:"eco", name:"Graines de Quartier", city:"Nantes", dist:"1,2 km",
+   desc:"Jardins partagés et compostage collectif pour reverdir la ville ensemble.",
+   x:58, y:30, tel:"02 40 98 76 54", mail:"hello@grainesdequartier.org", addr:"5 rue du Jardin, Nantes",
+   sub:["Jardinage","Compost","Bénévolat","Famille"]},
+  {id:3, cat:"sport", name:"Roll'Atlantique", city:"Nantes", dist:"1,9 km",
+   desc:"Club de roller pour petits et grands, balades urbaines tous les vendredis.",
+   x:72, y:58, tel:"02 40 55 11 22", mail:"club@rollatlantique.fr", addr:"Parc des sports, Nantes",
+   sub:["Roller","Loisirs","Famille","Débutants"]},
+  {id:4, cat:"social", name:"Solidarité Voisins", city:"Nantes", dist:"2,3 km",
+   desc:"Réseau d'entraide de quartier : courses, visites, coups de main solidaires.",
+   x:26, y:66, tel:"02 40 33 44 55", mail:"aide@solidarite-voisins.fr", addr:"3 place du Marché, Nantes",
+   sub:["Entraide","Bénévolat","Seniors","Gratuit"]},
+  {id:5, cat:"jeunesse", name:"Cap sur l'Avenir", city:"Nantes", dist:"2,7 km",
+   desc:"Aide aux devoirs et accompagnement scolaire pour les collégiens du quartier.",
+   x:46, y:74, tel:"02 40 66 77 88", mail:"contact@capsuravenir.fr", addr:"18 rue de l'École, Nantes",
+   sub:["Soutien scolaire","Jeunes","Bénévolat","Gratuit"]},
+  {id:6, cat:"culture", name:"Vinyles & Compagnie", city:"Nantes", dist:"3,1 km",
+   desc:"Association de passionnés de musique, concerts intimistes et bourses aux vinyles.",
+   x:62, y:50, tel:"02 40 22 33 44", mail:"bonjour@vinylesetcie.fr", addr:"7 rue Mercoeur, Nantes",
+   sub:["Musique","Concerts","Vinyles","Soirées"]},
+  {id:7, cat:"sante", name:"Bulle de Bien-être", city:"Nantes", dist:"3,6 km",
+   desc:"Yoga, sophrologie et ateliers anti-stress accessibles à prix libre.",
+   x:40, y:24, tel:"02 40 77 88 99", mail:"info@bulledebienetre.fr", addr:"22 bd des Belges, Nantes",
+   sub:["Yoga","Bien-être","Prix libre","Détente"]},
+  {id:8, cat:"eco", name:"Vélo pour Tous", city:"Nantes", dist:"4,0 km",
+   desc:"Atelier d'auto-réparation de vélos et promotion de la mobilité douce.",
+   x:50, y:56, tel:"02 40 44 55 66", mail:"atelier@velopourtous.org", addr:"9 rue du Cycle, Nantes",
+   sub:["Vélo","Réparation","Mobilité","Atelier"]},
+];
+
+let activeCat = "all";
+let favs = new Set();
+
+/* ---------- Confettis (landing bg) ---------- */
+(function(){
+  const field = document.getElementById('confetti');
+  const colors = [getCss('--eco'),getCss('--culture'),getCss('--sport'),getCss('--social'),getCss('--jeunesse'),getCss('--sante')];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  for(let i=0;i<26;i++){
+    const c=document.createElement('span');
+    c.className='confetti'+(Math.random()>.5?' round':'');
+    const s=8+Math.random()*12;
+    c.style.width=s+'px';c.style.height=s+'px';
+    c.style.background=colors[i%colors.length];
+    c.style.left=Math.random()*100+'%';
+    c.style.top=Math.random()*100+'%';
+    c.style.opacity=.18+Math.random()*.5;
+    c.style.animationDelay=(-Math.random()*9)+'s';
+    c.style.animationDuration=(7+Math.random()*6)+'s';
+    if(reduce) c.style.animation='none';
+    field.appendChild(c);
+  }
+})();
+
+/* ---------- Filters ---------- */
+function renderFilters(){
+  const f=document.getElementById('filters');
+  let html=`<button class="fpill ${activeCat==='all'?'active':''}" style="${activeCat==='all'?'background:var(--ink)':''}" onclick="setCat('all')">Tout voir</button>`;
+  for(const [k,c] of Object.entries(CATS)){
+    const on=activeCat===k;
+    html+=`<button class="fpill ${on?'active':''}" style="${on?`background:${c.color}`:''}" onclick="setCat('${k}')">
+      <span class="d" style="background:${c.color}"></span>${c.emoji} ${c.label}</button>`;
+  }
+  f.innerHTML=html;
+}
+function setCat(k){activeCat=k;renderFilters();renderList();renderPins();}
+
+/* ---------- List of cards ---------- */
+function visibleAssos(){return ASSOS.filter(a=>activeCat==='all'||a.cat===activeCat)}
+function renderList(){
+  const list=document.getElementById('list');
+  const items=visibleAssos();
+  document.getElementById('count').textContent=items.length;
+  list.innerHTML=items.map(a=>{
+    const c=CATS[a.cat];
+    return `<article class="card" data-id="${a.id}"
+        style="--c:${c.color};--c-soft:${c.soft};--c-shadow:${hexA(c.color,.4)}"
+        onclick="openDrawer(${a.id})"
+        onmouseenter="bouncePin(${a.id})">
+      <div class="card-top">
+        <span class="tag">${c.emoji} ${c.label}</span>
+        <button class="fav ${favs.has(a.id)?'on':''}" onclick="event.stopPropagation();toggleFav(${a.id},this)">♥</button>
+      </div>
+      <h3>${a.name}</h3>
+      <p class="desc">${a.desc}</p>
+      <div class="card-foot">
+        <span class="loc">📍 ${a.city} · ${a.dist}</span>
+        <span class="act">Voir →</span>
+      </div>
+    </article>`;
+  }).join('');
+}
+function toggleFav(id,el){favs.has(id)?favs.delete(id):favs.add(id);el.classList.toggle('on')}
+
+/* ---------- Map pins ---------- */
+function renderPins(){
+  const wrap=document.querySelector('.mapwrap');
+  wrap.querySelectorAll('.pin').forEach(p=>p.remove());
+  visibleAssos().forEach(a=>{
+    const c=CATS[a.cat];
+    const pin=document.createElement('button');
+    pin.className='pin';pin.dataset.id=a.id;
+    pin.style.cssText=`left:${a.x}%;top:${a.y}%;background:${c.color}`;
+    pin.onclick=()=>openDrawer(a.id);
+    pin.innerHTML=`<div class="popup">
+        <span class="ptag" style="color:${c.color}">${c.emoji} ${c.label}</span>
+        <h4>${a.name}</h4>
+        <div class="pdesc">📍 ${a.city} · ${a.dist}</div>
+      </div>`;
+    wrap.appendChild(pin);
+  });
+}
+function bouncePin(id){
+  const p=document.querySelector(`.pin[data-id="${id}"]`);
+  if(!p)return;p.classList.add('bounce');setTimeout(()=>p.classList.remove('bounce'),500);
+}
+
+/* ---------- Drawer ---------- */
+function openDrawer(id){
+  const a=ASSOS.find(x=>x.id===id);const c=CATS[a.cat];
+  document.documentElement.style.setProperty('--c',c.color);
+  document.documentElement.style.setProperty('--c-shadow',hexA(c.color,.5));
+  const head=document.getElementById('drawerHead');
+  head.style.background=`linear-gradient(135deg, ${c.color}, ${hexA(c.color,.78)})`;
+  document.getElementById('dTag').textContent=`${c.emoji} ${c.label}`;
+  document.getElementById('dName').textContent=a.name;
+  document.getElementById('dLoc').textContent=`📍 ${a.addr} · ${a.dist}`;
+  document.getElementById('dDesc').textContent=a.desc+" L'association accueille de nouveaux membres et bénévoles tout au long de l'année.";
+  document.getElementById('dInfo').innerHTML=`
+    <div class="info-row"><span class="ric" style="background:${c.soft};color:${c.color}">📍</span>${a.addr}</div>
+    <div class="info-row"><span class="ric" style="background:${c.soft};color:${c.color}">📞</span>${a.tel}</div>
+    <div class="info-row"><span class="ric" style="background:${c.soft};color:${c.color}">✉️</span>${a.mail}</div>`;
+  document.getElementById('dSub').innerHTML=a.sub.map(s=>`<span class="subtag">${s}</span>`).join('');
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('drawer').classList.add('show');
+  // highlight pin
+  document.querySelectorAll('.pin').forEach(p=>p.classList.toggle('active',p.dataset.id==id));
+}
+function closeDrawer(){
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('drawer').classList.remove('show');
+  document.querySelectorAll('.pin').forEach(p=>p.classList.remove('active'));
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDrawer()});
+
+/* ---------- View switch ---------- */
+function showApp(){
+  document.getElementById('landing').classList.add('hidden');
+  document.getElementById('app').style.display='block';
+  renderFilters();renderList();renderPins();
+}
+function showLanding(){
+  closeDrawer();
+  document.getElementById('app').style.display='none';
+  document.getElementById('landing').classList.remove('hidden');
+}
+</script>
+</body>
+</html>
