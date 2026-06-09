@@ -1,7 +1,7 @@
 id;titre;objet;adrs_numvoie;adrs_typevoie;adrs_libvoie;adrs_codepostal;adrs_libcommune;siteweb;email;telephone;nature;lat;lng;date_disso
-W441000001;Les Jardins Partagés Nantais;jardinage potager écologie environnement nature biodiversité;12;rue;des Olivettes;44000;Nantes;https://jardins-nantais.fr;contact@jardins-nantais.fr;0240000001;Association;47.2184;-1.5536;
-W441000002;Compagnie Théâtre du Grand Pré;théâtre culture spectacle vivant comédie;1;boulevard;de Stalingrad;44200;Nantes;;troupe@grandpre.fr;0240000002;Association;47.2050;-1.5420;
-W851000003;Football Club de La Roche-sur-Yon;football sport entraînement compétition jeunes;5;rue;du Stade;85000;La Roche-sur-Yon;https://fclaroche.fr;;0251000003;Association;46.6705;-1.4260;
-W441000004;Solidarité Familles Nantes;aide sociale solidarité accompagnement familles précarité;30;rue;de la Paix;44100;Nantes;;aide@solidarite-nantes.fr;0240000004;Association;47.2100;-1.5800;
-W851000005;Patrimoine et Histoire de Vendée;patrimoine histoire sauvegarde monuments mémoire locale;8;place;de l'Église;85100;Les Sables-d'Olonne;;patrimoine85@orange.fr;0251000005;Association;46.4970;-1.7830;
-W441000006;Jeunesse et Éducation Populaire 44;éducation jeunesse formation animation accompagnement;22;avenue;des Écoles;44300;Nantes;https://jep44.org;;0240000006;Association;47.2400;-1.5300;
+W441000001;Les Jardins Partagés Nantais;jardin partagé écologie environnement compost biodiversité jardinage collectif;12;rue;des Olivettes;44000;Nantes;https://jardins-nantais.fr;contact@jardins-nantais.fr;0240000001;Association;47.2184;-1.5536;
+W441000002;Compagnie Théâtre du Grand Pré;théâtre culture spectacle vivant représentations culturelles;1;boulevard;de Stalingrad;44200;Nantes;;troupe@grandpre.fr;0240000002;Association;47.2050;-1.5420;
+W851000003;Football Club de La Roche-sur-Yon;football sport entraînement compétition équipes jeunes;5;rue;du Stade;85000;La Roche-sur-Yon;https://fclaroche.fr;;0251000003;Association;46.6705;-1.4260;
+W441000004;Amicale des Habitants du Bourg;amicale rencontres conviviales repas partagés entre voisins du bourg;30;rue;de la Paix;44100;Nantes;;amicale@bourg.fr;0240000004;Association;47.2100;-1.5800;
+W851000005;Épicerie Solidaire de Vendée;épicerie solidaire aide alimentaire précarité solidarité distribution;8;place;du Marché;85100;Les Sables-d'Olonne;;solidaire85@orange.fr;0251000005;Association;46.4970;-1.7830;
+W441000006;Éducation et Jeunesse Populaire 44;éducation jeunesse formation pédagogie accompagnement scolaire;22;avenue;des Écoles;44300;Nantes;https://jep44.org;;0240000006;Association;47.2400;-1.5300;
