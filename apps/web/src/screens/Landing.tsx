@@ -283,10 +283,10 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
 
           {/* Illustration du pipeline */}
           <img
-            src="/pipeline.png"
+            src="/pipeline.svg"
             alt="Le pipeline en 3 étapes : on cherche les liens sur le web, une IA les vérifie, puis on affiche une fiche notée."
             loading="lazy"
-            style={{ display: "block", width: "100%", maxWidth: 900, margin: "0 auto 44px", borderRadius: "var(--radius-lg, 22px)" }}
+            style={{ display: "block", width: "100%", maxWidth: 880, margin: "8px auto 48px" }}
           />
 
           {/* Les 3 étapes du pipeline */}
