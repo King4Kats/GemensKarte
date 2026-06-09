@@ -17,7 +17,6 @@ Q = {
     "qualityScore calculé": "select count(*) from associations where meta ? 'qualityScore'",
     "agenda à venir (events>0)": "select count(*) from associations where jsonb_array_length(coalesce(meta->'events','[]'::jsonb))>0",
     "  dont event matché asso": "select count(*) from associations where exists (select 1 from jsonb_array_elements(coalesce(meta->'events','[]'::jsonb)) e where (e->>'matchedAsso')::bool)",
-    "articles datés (publishedAt)": "select coalesce(sum((select count(*) from jsonb_array_elements(coalesce(meta->'pressArticles','[]'::jsonb)) a where a ? 'publishedAt')),0) from associations where meta ? 'pressArticles'",
 }
 TIERS = "select meta->'qualityScore'->>'tier' t, count(*) from associations where meta ? 'qualityScore' group by 1 order by 1"
 with psycopg.connect(DSN) as c:

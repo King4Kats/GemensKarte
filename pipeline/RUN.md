@@ -1,6 +1,6 @@
 # GemensKarte — Pipeline de vérification stricte des liens
 
-Refonte complète : découverte DDG → vérif LLM locale (Ollama) → filtre presse → apply/route.
+Refonte complète : découverte DDG → vérif LLM locale (Ollama) → apply/route.
 Un seul script écrit dans `social` (apply). Tout le reste écrit des preuves dans `meta.*`.
 Chaque passe est **idempotente** (gating timestamp) et **reprenable** (commit par ligne).
 
@@ -16,8 +16,8 @@ Chaque passe est **idempotente** (gating timestamp) et **reprenable** (commit pa
    ssh -N -o ServerAliveInterval=30 -L 0.0.0.0:5433:172.24.0.3:5432 noob-serveur  # jobs légers
    ssh -N -o ServerAliveInterval=30 -L 0.0.0.0:5434:172.24.0.3:5432 noob-serveur  # jobs DB-lourds
    ```
-   5433 = discover/verify/helloasso/fb ; 5434 = liveness/events + bloc périodique apply/press/
-   reap/score. (172.24.0.3 = IP du conteneur `gk-db` ; re-vérifier avec
+   5433 = discover/verify/helloasso/fb ; 5434 = liveness/events + bloc périodique apply/reap/
+   purge/score. (172.24.0.3 = IP du conteneur `gk-db` ; re-vérifier avec
    `ssh noob-serveur "docker exec gk-db hostname -i"`. Les scripts/diag ad-hoc utilisent 5433.)
 3. **venv** : `.venv` ici, deps `psycopg[binary] ddgs httpx readability-lxml ollama`.
 
@@ -40,10 +40,7 @@ $py = ".\.venv\Scripts\python.exe"
 # 2. VÉRIF LLM — le plus lent. Fetch sites + jugement Ollama.
 & $py verify_llm.py                    # tout ; --max-sites 2 par défaut
 
-# 3. PRESSE — filtre avis de décès / titres malformés (DB pur, rapide).
-& $py press_filter.py
-
-# 4. APPLY & ROUTE — DB pur, déterministe, rejouable. Réécrit `social`.
+# 3. APPLY & ROUTE — DB pur, déterministe, rejouable. Réécrit `social`.
 #    Inclut une GATE liveness : retire de social un lien confirmé mort (meta.linkHealth).
 & $py apply.py                         # seuils --apply-th 0.75 --quar-th 0.40
 
@@ -65,12 +62,8 @@ $py = ".\.venv\Scripts\python.exe"
 # 9b. PROMOTE — vérifie le candidat fbWebsite par LLM (fetch+juge) ; si OK -> colonne curée website.
 & $py fb_promote.py --limit 30          # min-conf 0.7 ; gating fbWebsitePromotedAt
 
-# 3b. PRESSE — filtre ÉDITORIAL (PAS de liveness : 403 anti-bot OF/actu = faux morts).
-#     Extrait la date (UUID v1 dans l'URL OF + préfixe snippet DDG "Mon DD, YYYY"/"N days ago"),
-#     écrit art.publishedAt, retire : périmé >--stale-years (3 ans), pages d'atterrissage
-#     commune OF (.../ville-85xxx/), home maville, pages ANNUAIRE infolocale (sans /article-).
-#     Garde les infolocale .../article-... = annonces d'événements (réutiles au chantier events).
-& $py press_filter.py                  # --stale-years 3
+# 9c. PURGE ANNUAIRES — retire mappy/cerfapp... servis comme site web (DB pur) -> meta.directoryRemoved
+& $py purge_directories.py             # voir lib_match.DIRECTORY_HOSTS
 
 # Stats / contrôle à tout moment :
 & $py stats.py

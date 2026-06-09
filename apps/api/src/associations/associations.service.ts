@@ -51,7 +51,6 @@ const COLS = sql`
 function mapRow(r: Row): Association {
   const meta = (r.meta ?? {}) as {
     blurb?: string; members?: number; founded?: number; needs?: string; action?: string;
-    pressArticles?: Array<{ title: string; url: string; source: string; domain?: string; snippet: string }>;
     qualityScore?: { score: number; tier: "A" | "B" | "C" | "D"; flags?: string[] };
     events?: Array<{ title?: string; start?: string; end?: string; dateLabel?: string;
       city?: string; place?: string; url?: string; image?: string; matchedAsso?: boolean; distKm?: number }>;
@@ -82,7 +81,6 @@ function mapRow(r: Row): Association {
     founded: meta.founded ?? null,
     needs: meta.needs ?? null,
     action: meta.action ?? null,
-    pressArticles: meta.pressArticles ?? [],
     qualityScore: meta.qualityScore ?? null,
     events: upcoming,
     status: r.status,

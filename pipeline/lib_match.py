@@ -51,6 +51,8 @@ DIRECTORY_HOSTS = {
     "ouest-france.fr", "actu.fr", "lefigaro.fr", "letelegramme.fr",
     "lanouvellerepublique.fr", "petitbleu.fr", "presse-ocean.com",
     "vendeematin.fr", "le-courrier-de-louest.fr", "maville.com",
+    # cartographie / annuaires d'assos (se font passer pour un site web)
+    "mappy.com", "mappy.fr", "cerfapp.fr", "cerfapp.com",
 }
 
 STOPWORDS = {
