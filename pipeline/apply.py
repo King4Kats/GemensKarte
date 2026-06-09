@@ -47,7 +47,15 @@ def site_prior(score: int) -> float:
 
 
 def social_score(match_type: str, conf: float) -> float:
-    return round(0.35 * PRIOR.get(match_type, 0.2) + 0.65 * conf, 3)
+    prior = PRIOR.get(match_type, 0.2)
+    # match_type 'slug' = un token DISCRIMINANT du nom est DANS l'identifiant du compte
+    # (ex. facebook.com/AssoMusiqueChallans pour l'asso "...Musique Challans"). Signal
+    # structurel très fiable. Comme le LLM ne peut PAS lire la page (FB/IG bloquent les
+    # robots) et reste donc prudent (confiance moyenne), on fait davantage confiance au
+    # STRUCTUREL pour les slugs forts -> on inverse la pondération (option A).
+    if match_type == "slug":
+        return round(0.65 * prior + 0.35 * conf, 3)
+    return round(0.35 * prior + 0.65 * conf, 3)
 
 
 def website_score(disc_score: int, conf: float) -> float:
@@ -99,7 +107,14 @@ def route(asso: dict, apply_th: float, quar_th: float) -> dict:
 
         rec = {"url": url, "score": score, "reason": v.get("reason", ""), "verdict": verdict}
 
-        if trusted or (verdict != "drop" and score >= apply_th):
+        # Pour les RÉSEAUX SOCIAUX (FB/IG/LI), le LLM ne lit pas la page (bloquée) et reste
+        # prudent -> la formule de score peut recaler en quarantaine un lien que le LLM a
+        # pourtant explicitement validé ("keep"). On respecte sa décision : un keep social
+        # s'applique (option A). Les "quarantine" (le LLM doutait lui-même) restent gatés
+        # par le score. Le website (page lue en vrai) garde sa règle au score.
+        social_keep = (key != "website" and verdict == "keep")
+
+        if trusted or social_keep or (verdict != "drop" and score >= apply_th):
             social[key] = url
         elif verdict != "drop" and score >= quar_th:
             quarantine[key] = rec
