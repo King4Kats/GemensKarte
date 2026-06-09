@@ -6,68 +6,6 @@ import { catById } from "../lib/categories";
 import { Icon, type IconName } from "./Icon";
 import { CatBadge } from "./CatBadge";
 
-interface PressArticle {
-  title: string; url: string; source: string; domain?: string; snippet: string;
-}
-
-const SOURCE_COLORS: Record<string, string> = {
-  "Ouest-France":           "#e2001a",
-  "Le Télégramme":          "#0057a8",
-  "Actu.fr":                "#ff6600",
-  "Presse Océan":           "#006bac",
-  "Vendée Matin":           "#00843d",
-  "Le Courrier de l'Ouest": "#8b0000",
-  "Paris-Normandie":        "#003366",
-};
-
-function PressCard({ article }: { article: PressArticle }) {
-  const color = SOURCE_COLORS[article.source] ?? "#6b7280";
-  return (
-    <a
-      href={article.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        display: "block",
-        textDecoration: "none",
-        padding: "13px 0",
-        borderBottom: "1px solid var(--hairline-2)",
-        transition: "opacity .15s",
-      }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.72"; }}
-      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-        <span style={{
-          fontSize: 10, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase",
-          color, padding: "2px 9px", borderRadius: "var(--radius-pill)", whiteSpace: "nowrap",
-          border: `1.5px solid ${color}`,
-        }}>
-          {article.source}
-        </span>
-        <Icon name="arrowUpRight" size={13} stroke={2.2} style={{ color: "var(--muted)" } as any} />
-      </div>
-      <p style={{
-        margin: "0 0 4px",
-        fontSize: 14, fontWeight: 700, color: "var(--ink)", lineHeight: 1.3,
-      }}>
-        {article.title}
-      </p>
-      {article.snippet && (
-        <p style={{
-          margin: 0, fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.45,
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-          overflow: "hidden",
-        } as React.CSSProperties}>
-          {article.snippet}
-        </p>
-      )}
-    </a>
-  );
-}
-
 const sheetH: CSSProperties = {
   fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
   color: "var(--muted)", margin: "0 0 12px",
@@ -163,8 +101,6 @@ function EventCard({ ev, color }: { ev: EventItem; color: string }) {
 export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose: () => void }) {
   const c = asso ? catById(asso.categoryId) : null;
   const website = asso?.social?.website ?? null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pressArticles: PressArticle[] = (asso as any)?.pressArticles ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const events: EventItem[] = (asso as any)?.events ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -301,15 +237,6 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
                 </div>
               )}
 
-              {/* Dans la presse */}
-              {pressArticles.length > 0 && (
-                <div style={{ marginBottom: 8 }}>
-                  <h4 style={sheetH}>Dans la presse</h4>
-                  {pressArticles.map((a, idx) => (
-                    <PressCard key={idx} article={a} />
-                  ))}
-                </div>
-              )}
             </div>
 
             {/* Bouton Contacter — seulement si email dispo en DB */}

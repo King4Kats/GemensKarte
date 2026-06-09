@@ -1,15 +1,10 @@
 # 📖 COMMENT ÇA MARCHE — GemensKarte, expliqué simplement
 
-> Ce document explique TOUT le système comme à un dev débutant.
-> Les lignes qui commencent par `#` (dans les blocs de code) sont des commentaires : elles
-> expliquent la ligne, elles ne « font » rien.
-
----
 
 ## 1. C'est quoi GemensKarte, en une phrase ?
 
 Une **carte des associations** (18 554 en Vendée) où chaque asso a une fiche avec ses
-**liens** (site web, Facebook, Instagram, HelloAsso), ses **articles de presse** et son
+**liens** (site web, Facebook, Instagram, HelloAsso) et son
 **agenda à venir**. Le problème : les données de départ (le fichier officiel des assos, le
 « RNA ») sont **pauvres et parfois fausses**. Notre boulot : les **enrichir** et les
 **nettoyer** automatiquement.
@@ -130,7 +125,7 @@ Tous les autres écrivent des « preuves » dans `meta`, et `apply` décide à l
     meta.discovery     meta.verification   et écrit social{}
 ```
 
-### `discover.py` — SCRAP 1 : "le chercheur"
+### `discover.py` — SCRAP 1 : "le chercheur" ( ## possible à dupliquer specifique par hello assos, fb, insta, site web ... ? ca me semble galere et pas particulierement pertinent )
 ```python
 # Pour chaque asso, il tape une recherche sur DuckDuckGo :
 #   "<nom de l'asso> <ville> association Vendée"
@@ -141,7 +136,7 @@ Tous les autres écrivent des « preuves » dans `meta`, et `apply` décide à l
 > ⚠️ DuckDuckGo bloque si on tape trop vite (« rate-limit »). D'où les pauses et le « backoff »
 > (attendre de plus en plus longtemps si ça coince).
 
-### `verify_llm.py` — SCRAP 2 : "le juge"
+### `verify_llm.py` — SCRAP 2 : "le juge" (##il peut pas juger sur les snipet pour les fb et tout, ca serait en plus pour quand les protection robots sont hard ?)
 ```python
 # Pour chaque candidat trouvé, il demande à Ollama (le LLM local, sur ton GPU) :
 #   "Ce lien appartient-il VRAIMENT à CETTE asso précise ?"
@@ -162,20 +157,10 @@ Tous les autres écrivent des « preuves » dans `meta`, et `apply` décide à l
 # social "à la main", apply l'écrasera : il faut passer par les preuves (meta.*).
 ```
 
-### `helloasso.py` — "le spécialiste dons"
+### `helloasso.py` — "le spécialiste dons" (## sur hello asso c'est bien protejet des robot ? car il on les liens des sites et reseaux sur les pages presentation des asso)
 ```python
 # Cherche spécifiquement sur helloasso.com. Les liens HelloAsso sont FIABLES (la plateforme
 # vérifie déjà l'asso), donc si le nom colle bien, on les garde direct (pas besoin du LLM).
-```
-
-### `press_filter.py` — SCRAP 3 : "le nettoyeur de presse"
-```python
-# Les articles de presse (meta.pressArticles) sont déjà là (collectés avant). Ce script :
-#  - EXTRAIT la date de chaque article (cachée dans l'URL Ouest-France ou dans l'extrait DDG),
-#  - RETIRE les articles trop vieux (> 3 ans),
-#  - RETIRE le bruit : pages d'accueil de commune, annuaires, avis de décès, etc.
-# ⚠️ On NE teste PAS si l'URL marche : Ouest-France renvoie "403 interdit" aux robots,
-#    donc un test naïf croirait que TOUS les articles sont morts (faux). On filtre "à la main".
 ```
 
 ### `liveness.py` — SCRAP 5 : "le testeur de liens morts"
@@ -281,7 +266,7 @@ l'ouverture de session, redémarre si crash). Son boulot :
    │  3. Les jobs scrap tournent-ils ? sinon -> les relancer         │
    │       • tunnel 5433 : discover, verify, helloasso, fb->site     │
    │       • tunnel 5434 : liveness, events                          │
-   │  4. Tous les ~10 min : apply, press, reap, score, fb-promote    │
+   │  4. Tous les ~10 min : apply, reap, purge, score, fb-promote    │
    └────────────────────────────────────────────────────────────────┘
    -> Survit à la fermeture du chat, aux reboots. Tout est "idempotent"
       (le relancer ne casse rien) et "reprenable" (reprend où ça s'est arrêté).
