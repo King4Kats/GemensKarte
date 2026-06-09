@@ -81,7 +81,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
         <div
           className="cm-scroll"
           style={{
-            position: "absolute", top: "calc(100% + 10px)", left: 0, right: 0, zIndex: 40,
+            position: "absolute", top: "calc(100% + 10px)", left: 0, right: 0, zIndex: 1000,
             background: "var(--bg)", borderRadius: "var(--radius)",
             boxShadow: "var(--shadow-pop)", border: "1px solid var(--hairline)",
             padding: 8, maxHeight: 340, overflowY: "auto",

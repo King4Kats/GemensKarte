@@ -21,3 +21,12 @@ data/rna/*.zip
 *.log
 .DS_Store
 coverage/
+
+# pipeline d'enrichissement (Python) — garder les scripts, exclure le reste
+pipeline/.venv/
+pipeline/_*.py
+pipeline/_*.log
+pipeline/_*.txt
+pipeline/*.bak
+__pycache__/
+*.pyc

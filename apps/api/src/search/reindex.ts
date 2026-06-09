@@ -1,7 +1,7 @@
 import { MeiliSearch } from "meilisearch";
 import { Pool } from "pg";
 import { getEnv } from "../config/env";
-import type { AssociationDoc } from "./search.service";
+import { CAT_LABEL, SEARCH_SYNONYMS, type AssociationDoc } from "./search.service";
 
 /** Réindexe toutes les associations publiées dans Meilisearch. */
 async function main(): Promise<void> {
@@ -12,23 +12,28 @@ async function main(): Promise<void> {
   await client.createIndex("associations", { primaryKey: "id" }).catch(() => undefined);
   const index = client.index<AssociationDoc>("associations");
   await index.updateSettings({
-    searchableAttributes: ["name", "city", "tags", "description"],
+    searchableAttributes: ["name", "city", "categoryLabel", "tags", "description"],
     filterableAttributes: ["categoryId", "department"],
     sortableAttributes: ["name"],
+    synonyms: SEARCH_SYNONYMS,
   });
 
   // Purge l'index pour ne pas garder de documents supprimés (Meili ne fait pas
   // de diff : on repart propre). Les tâches Meili sont traitées dans l'ordre.
   await index.deleteAllDocuments();
 
-  const { rows } = await pool.query<AssociationDoc>(
+  const { rows } = await pool.query<Omit<AssociationDoc, "categoryLabel">>(
     `SELECT id, name, category_id AS "categoryId", description, city, department, tags
      FROM associations WHERE status = 'published'`,
   );
+  const docs: AssociationDoc[] = rows.map((r) => ({
+    ...r,
+    categoryLabel: CAT_LABEL[r.categoryId] ?? "",
+  }));
 
-  if (rows.length > 0) {
-    const task = await index.addDocuments(rows);
-    console.log(`▶️  ${rows.length} documents envoyés (task #${task.taskUid})`);
+  if (docs.length > 0) {
+    const task = await index.addDocuments(docs);
+    console.log(`▶️  ${docs.length} documents envoyés (task #${task.taskUid})`);
   }
 
   await pool.end();

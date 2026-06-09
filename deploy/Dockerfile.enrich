@@ -1,0 +1,8 @@
+# Passe B — enrichissement (recherche web + heuristiques). Pas de LLM.
+# Passe A — scraper mairie/comcom (beautifulsoup4 + requests).
+FROM python:3.11-slim
+WORKDIR /app
+RUN pip install --no-cache-dir "ddgs" "psycopg[binary]" "requests" "beautifulsoup4"
+COPY tools/enrichment/enrich_lite.py tools/enrichment/enrich_run.py tools/enrichment/scrape_mairie.py tools/enrichment/enrich_press.py ./
+# DATABASE_URL fourni par compose ; --sleep 1.0 = rythme poli anti rate-limit.
+CMD ["python", "-u", "enrich_run.py", "--sleep", "1.0"]

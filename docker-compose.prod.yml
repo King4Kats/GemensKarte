@@ -1,0 +1,106 @@
+# Déploiement complet GemensKarte sur noob-serveur (tout en conteneurs).
+# Web exposé sur le LAN en :8088. DB/Meili en réseau interne (pas de port hôte :
+# 5432 est déjà pris par Supabase sur la machine).
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: gk-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gemenskarte
+      POSTGRES_PASSWORD: gemenskarte
+      POSTGRES_DB: gemenskarte
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemenskarte -d gemenskarte"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: gk-search
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: devMasterKeyChangeMe
+      MEILI_ENV: production
+    volumes:
+      - meili_data:/meili_data
+
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.api
+    container_name: gk-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      CORS_ORIGIN: "*"
+      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+      MEILI_HOST: http://meilisearch:7700
+      MEILI_MASTER_KEY: devMasterKeyChangeMe
+      BAN_GEOCODER_URL: https://api-adresse.data.gouv.fr
+    depends_on:
+      db:
+        condition: service_healthy
+      meilisearch:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.web
+    container_name: gk-web
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    depends_on:
+      - api
+
+  enrich:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.enrich
+    container_name: gk-enrich
+    restart: on-failure
+    environment:
+      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scrape_mairie:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.enrich
+    container_name: gk-scrape
+    restart: no
+    profiles: [scrape]
+    environment:
+      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+    command: python -u scrape_mairie.py --sleep 2.0
+    volumes:
+      - ./tools/enrichment:/output
+    depends_on:
+      db:
+        condition: service_healthy
+
+  press_enrich:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.enrich
+    container_name: gk-press
+    restart: "no"
+    profiles: [press]
+    environment:
+      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+    command: python -u enrich_press.py --sleep 2.0
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
+  meili_data:

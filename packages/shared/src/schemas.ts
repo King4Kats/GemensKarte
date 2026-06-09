@@ -46,6 +46,34 @@ export const Association = z.object({
   action: z.string().nullable().optional(),
   status: AssociationStatus,
   source: z.enum(["manual", "rna"]),
+  /** Articles de presse mentionnant l'association. */
+  pressArticles: z.array(z.object({
+    title: z.string(),
+    url: z.string(),
+    source: z.string(),
+    domain: z.string().optional(),
+    snippet: z.string(),
+    publishedAt: z.string().optional(),
+  })).optional(),
+  /** Score qualité/fraîcheur calculé par le pipeline (0-100 + tier + flags). */
+  qualityScore: z.object({
+    score: z.number(),
+    tier: z.enum(["A", "B", "C", "D"]),
+    flags: z.array(z.string()).optional(),
+  }).nullable().optional(),
+  /** Agenda à venir (événements OpenAgenda rattachés par proximité). */
+  events: z.array(z.object({
+    title: z.string().nullable().optional(),
+    start: z.string().nullable().optional(),
+    end: z.string().nullable().optional(),
+    dateLabel: z.string().nullable().optional(),
+    city: z.string().nullable().optional(),
+    place: z.string().nullable().optional(),
+    url: z.string().nullable().optional(),
+    image: z.string().nullable().optional(),
+    matchedAsso: z.boolean().optional(),
+    distKm: z.number().optional(),
+  })).optional(),
   /** Distance en mètres depuis le point `near`, si fourni dans la requête. */
   distanceM: z.number().nullable().optional(),
 });
@@ -82,11 +110,21 @@ const boolish = z.preprocess(
 export const ListAssociationsQuery = z.object({
   q: z.string().trim().min(1).optional(),
   category: z.enum(CATEGORY_IDS).optional(),
+  categories: z
+    .string()
+    .transform((s) =>
+      s.split(',').filter((id): id is typeof CATEGORY_IDS[number] =>
+        (CATEGORY_IDS as readonly string[]).includes(id),
+      ),
+    )
+    .optional(),
   department: z.string().regex(/^\d{2,3}$/).optional(),
   bbox: BBoxSchema.optional(),
   near: NearSchema.optional(),
   /** Ne renvoyer que les associations géolocalisées (pour la carte). */
   located: boolish,
+  /** Tri : par nom (défaut) ou par score qualité décroissant. */
+  sort: z.enum(["name", "quality"]).optional(),
   page: numeric.int().min(1).default(1),
   limit: numeric.int().min(1).max(100).default(20),
 });
@@ -130,3 +168,30 @@ export const Suggestion = z.object({
   city: z.string().nullable(),
 });
 export type Suggestion = z.infer<typeof Suggestion>;
+
+export const PatchCategoryInput = z.object({
+  categoryId: z.enum(CATEGORY_IDS),
+});
+export type PatchCategoryInput = z.infer<typeof PatchCategoryInput>;
+
+/* ------------------------ Revue de quarantaine ------------------------ */
+
+/** Une fiche avec au moins un lien en quarantaine (en attente d'arbitrage humain). */
+export interface QuarantineAssoc {
+  id: string;
+  name: string;
+  city: string | null;
+  department: string | null;
+  description: string | null;
+  /** Liens déjà appliqués (contexte). */
+  social: Record<string, string>;
+  /** platform -> { url, score, reason } à arbitrer. */
+  quarantine: Record<string, { url: string; score: number; reason: string }>;
+}
+
+/** Arbitrage d'un lien en quarantaine : le garder (→ social) ou le jeter (→ meta.dropped). */
+export const ResolveQuarantineInput = z.object({
+  platform: z.string().min(1).max(40),
+  action: z.enum(["keep", "drop"]),
+});
+export type ResolveQuarantineInput = z.infer<typeof ResolveQuarantineInput>;

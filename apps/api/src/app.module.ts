@@ -5,9 +5,11 @@ import { DbModule } from "./db/db.module";
 import { GeoModule } from "./geo/geo.module";
 import { HealthController } from "./health.controller";
 import { SearchModule } from "./search/search.module";
+import { ContactModule } from "./contact/contact.module";
+import { StatsModule } from "./stats/stats.module";
 
 @Module({
-  imports: [DbModule, GeoModule, SearchModule, CategoriesModule, AssociationsModule],
+  imports: [DbModule, GeoModule, SearchModule, CategoriesModule, AssociationsModule, ContactModule, StatsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

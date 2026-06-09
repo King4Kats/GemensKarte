@@ -4,6 +4,9 @@ import {
   type CreateAssociationInput,
   type ListAssociationsQuery,
   type Paginated,
+  type PatchCategoryInput,
+  type QuarantineAssoc,
+  type ResolveQuarantineInput,
 } from "@gemenskarte/shared";
 import { sql, type SQL } from "drizzle-orm";
 import type { Pool } from "pg";
@@ -48,7 +51,14 @@ const COLS = sql`
 function mapRow(r: Row): Association {
   const meta = (r.meta ?? {}) as {
     blurb?: string; members?: number; founded?: number; needs?: string; action?: string;
+    pressArticles?: Array<{ title: string; url: string; source: string; domain?: string; snippet: string }>;
+    qualityScore?: { score: number; tier: "A" | "B" | "C" | "D"; flags?: string[] };
+    events?: Array<{ title?: string; start?: string; end?: string; dateLabel?: string;
+      city?: string; place?: string; url?: string; image?: string; matchedAsso?: boolean; distKm?: number }>;
   };
+  // n'expose que les événements ENCORE à venir (start >= maintenant).
+  const nowIso = new Date().toISOString();
+  const upcoming = (meta.events ?? []).filter((e) => (e.start ?? "") >= nowIso);
   return {
     id: r.id,
     rnaId: r.rna_id,
@@ -72,6 +82,9 @@ function mapRow(r: Row): Association {
     founded: meta.founded ?? null,
     needs: meta.needs ?? null,
     action: meta.action ?? null,
+    pressArticles: meta.pressArticles ?? [],
+    qualityScore: meta.qualityScore ?? null,
+    events: upcoming,
     status: r.status,
     source: r.source,
     distanceM: r.distance_m ?? null,
@@ -90,7 +103,11 @@ export class AssociationsService {
   /** Construit la clause WHERE commune (filtres catégorie / dept / texte / bbox). */
   private buildWhere(q: ListAssociationsQuery): SQL {
     const conds: SQL[] = [sql`status = 'published'`];
-    if (q.category) conds.push(sql`category_id = ${q.category}`);
+    if (q.categories && q.categories.length > 0) {
+      conds.push(sql`category_id IN (${sql.join(q.categories.map((id) => sql`${id}`), sql`, `)})`);
+    } else if (q.category) {
+      conds.push(sql`category_id = ${q.category}`);
+    }
     if (q.department) conds.push(sql`department = ${q.department}`);
     if (q.q) {
       const like = `%${q.q}%`;
@@ -115,7 +132,9 @@ export class AssociationsService {
       : sql`NULL::float8`;
     const order = q.near
       ? sql`ORDER BY distance_m ASC NULLS LAST, name ASC`
-      : sql`ORDER BY name ASC`;
+      : q.sort === "quality"
+        ? sql`ORDER BY (meta->'qualityScore'->>'score')::int DESC NULLS LAST, name ASC`
+        : sql`ORDER BY name ASC`;
 
     const items = await this.db.execute<Row>(sql`
       SELECT ${COLS}, ${distance} AS distance_m
@@ -158,7 +177,7 @@ export class AssociationsService {
       SELECT id, name, category_id, city, ST_X(location) AS lng, ST_Y(location) AS lat
       FROM associations
       WHERE ${where} AND location IS NOT NULL
-      LIMIT 5000
+      LIMIT 50000
     `);
 
     return {
@@ -224,5 +243,65 @@ export class AssociationsService {
     const created = mapRow(res.rows[0]!);
     await this.search.indexDocuments([toSearchDoc(created)]);
     return created;
+  }
+
+  async patchCategory(id: string, input: PatchCategoryInput): Promise<Association> {
+    await this.db.execute(sql`
+      UPDATE associations SET category_id = ${input.categoryId} WHERE id = ${id}
+    `);
+    const updated = await this.findOne(id);
+    await this.search.indexDocuments([toSearchDoc(updated)]);
+    return updated;
+  }
+
+  /** Liste les fiches ayant au moins un lien en quarantaine (revue manuelle). */
+  async listQuarantine(page: number, limit: number): Promise<Paginated<QuarantineAssoc>> {
+    const offset = (page - 1) * limit;
+    const where = sql`meta -> 'quarantine' IS NOT NULL AND meta -> 'quarantine' <> '{}'::jsonb`;
+    const countRes = await this.db.execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM associations WHERE ${where}`,
+    );
+    const res = await this.db.execute<{
+      id: string; name: string; city: string | null; department: string | null;
+      description: string | null; social: Record<string, string> | null;
+      quarantine: Record<string, { url: string; score: number; reason: string }> | null;
+    }>(sql`
+      SELECT id, name, city, department, description,
+             social, meta -> 'quarantine' AS quarantine
+      FROM associations WHERE ${where}
+      ORDER BY name LIMIT ${limit} OFFSET ${offset}
+    `);
+    return {
+      items: res.rows.map((r) => ({
+        id: r.id, name: r.name, city: r.city, department: r.department,
+        description: r.description, social: r.social ?? {}, quarantine: r.quarantine ?? {},
+      })),
+      page, limit, total: countRes.rows[0]?.n ?? 0,
+    };
+  }
+
+  /** Arbitre un lien en quarantaine : keep -> social ; drop -> meta.dropped. Idempotent. */
+  async resolveQuarantine(id: string, input: ResolveQuarantineInput): Promise<void> {
+    const { platform, action } = input;
+    if (action === "keep") {
+      // déplace meta.quarantine[platform].url vers social[platform], retire de la quarantaine.
+      await this.db.execute(sql`
+        UPDATE associations SET
+          social = COALESCE(social, '{}'::jsonb) || jsonb_build_object(${platform}::text, meta->'quarantine'->${platform}->>'url'),
+          meta = jsonb_set(meta, '{quarantine}', (meta->'quarantine') - ${platform}::text)
+        WHERE id = ${id} AND meta->'quarantine' ? ${platform}
+      `);
+    } else {
+      // trace dans meta.dropped puis retire de la quarantaine.
+      await this.db.execute(sql`
+        UPDATE associations SET
+          meta = jsonb_set(
+            jsonb_set(meta, '{dropped}', COALESCE(meta->'dropped','[]'::jsonb)
+              || jsonb_build_array(jsonb_build_object('platform', ${platform}::text,
+                   'manualDrop', true) || (meta->'quarantine'->${platform}))),
+            '{quarantine}', (meta->'quarantine') - ${platform}::text)
+        WHERE id = ${id} AND meta->'quarantine' ? ${platform}
+      `);
+    }
   }
 }

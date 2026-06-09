@@ -1,15 +1,35 @@
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
-import type { Association, Suggestion } from "@gemenskarte/shared";
+import { CATEGORIES, type Association, type Suggestion } from "@gemenskarte/shared";
 import { MeiliSearch, type Index } from "meilisearch";
 import { getEnv } from "../config/env";
 
 const INDEX = "associations";
+
+/** id de catégorie -> libellé lisible (ex. "culture" -> "Culture"), pour rendre la
+ *  recherche thématique possible ("musique", "sport", "culture"…). */
+export const CAT_LABEL: Record<string, string> = Object.fromEntries(
+  CATEGORIES.map((c) => [c.id, c.label]),
+);
+
+/** Synonymes : permet de chercher en anglais ou variantes ("music"->"musique"). */
+export const SEARCH_SYNONYMS: Record<string, string[]> = {
+  music: ["musique", "musical", "chorale", "orchestre"],
+  musique: ["music", "musical", "chorale", "orchestre"],
+  sport: ["sports", "sportive", "sportif"],
+  foot: ["football"],
+  basket: ["basketball"],
+  velo: ["cyclisme", "vtt"],
+  danse: ["dance"],
+  theatre: ["theatre", "comedie"],
+  asso: ["association"],
+};
 
 /** Document indexé dans Meilisearch (sous-ensemble léger de l'association). */
 export interface AssociationDoc {
   id: string;
   name: string;
   categoryId: string;
+  categoryLabel: string;
   description: string | null;
   city: string | null;
   department: string | null;
@@ -21,6 +41,7 @@ export function toSearchDoc(a: Association): AssociationDoc {
     id: a.id,
     name: a.name,
     categoryId: a.categoryId,
+    categoryLabel: CAT_LABEL[a.categoryId] ?? "",
     description: a.description,
     city: a.city,
     department: a.department,
@@ -56,10 +77,11 @@ export class SearchService implements OnModuleInit {
     try {
       await this.client.createIndex(INDEX, { primaryKey: "id" }).catch(() => undefined);
       await this.index.updateSettings({
-        searchableAttributes: ["name", "city", "tags", "description"],
+        searchableAttributes: ["name", "city", "categoryLabel", "tags", "description"],
         filterableAttributes: ["categoryId", "department"],
         sortableAttributes: ["name"],
         typoTolerance: { enabled: true },
+        synonyms: SEARCH_SYNONYMS,
       });
       this.available = true;
       this.logger.log("Index Meilisearch prêt");
