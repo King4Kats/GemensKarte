@@ -24,6 +24,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -39,6 +40,39 @@ ODS = ("https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
 # Centroïde Vendée + rayon englobant tout le département (avec marge).
 VENDEE = (46.67, -1.43)
 DEPT_RADIUS_KM = 70  # englobe la Vendée + marge, sans noyer sous les events de Nantes/La Rochelle
+
+# --- Anti-bruit : OpenAgenda renvoie AUSSI des sessions de recrutement (France Travail =
+# 65% des occurrences !), du job dating, de l'intérim... qui n'ont rien à faire sur une
+# carte d'ASSOS. On filtre à 2 niveaux : à la source (API) + filet de sécurité (Python).
+# 1) Exclusion côté API (ODSQL `NOT search`) : vide l'essentiel sans gaspiller la pagination.
+ODS_EXCLUDE = (
+    " AND NOT search(*, 'France Travail') AND NOT search(*, 'Pôle emploi')"
+    " AND NOT search(*, 'recrutement') AND NOT search(*, 'job dating')"
+    " AND NOT search(*, 'intérim') AND NOT search(*, 'sans CV')"
+)
+# 2) Filet Python : agendas-sources non-assos (slug dans l'URL) + mots-clés emploi résiduels.
+AGENDA_BLOCK = {
+    "francetravail", "allianz-prevention-tour", "semaine-industrie-2025",
+    "catalogue-departemental-des-structures-daccueil-et-dhebergement-vendee",
+    "catalogue-structures-accueil-hebergement",
+}
+NOISE_RE = re.compile(
+    r"recrut|job dating|sans cv|int[ée]rim|\binterim\b|prouver votre valeur|"
+    r"france travail|p[ôo]le emploi|semaine du transport|semaine de l.industrie|"
+    r"\brandstad\b|\bsynergie\b|\bmanpower\b|\badecco\b",
+    re.I,
+)
+AGENDA_SLUG_RE = re.compile(r"openagenda\.com/([^/]+)/", re.I)
+
+
+def is_relevant_event(ev: dict) -> bool:
+    """False si l'événement est du recrutement/emploi/commercial (pas une asso)."""
+    m = AGENDA_SLUG_RE.search(ev.get("url") or "")
+    if m and m.group(1).lower() in AGENDA_BLOCK:
+        return False
+    if NOISE_RE.search(ev.get("_text") or ""):
+        return False
+    return True
 
 
 def haversine(lat1, lon1, lat2, lon2) -> float:
@@ -74,7 +108,7 @@ def fetch_all_events(client, hard_cap=3000) -> list[dict]:
     """Récupère TOUS les événements à venir du département en paginant (~3 appels)."""
     out, offset = [], 0
     where = (f"within_distance(location_coordinates, geom'POINT({VENDEE[1]} {VENDEE[0]})', "
-             f"{DEPT_RADIUS_KM}km) AND firstdate_begin >= now()")
+             f"{DEPT_RADIUS_KM}km) AND firstdate_begin >= now()" + ODS_EXCLUDE)
     while offset < hard_cap:
         params = {"where": where, "order_by": "firstdate_begin", "limit": 100, "offset": offset}
         for attempt in range(4):
@@ -89,7 +123,12 @@ def fetch_all_events(client, hard_cap=3000) -> list[dict]:
                     return out
                 time.sleep(2)
         results = r.json().get("results", [])
-        out.extend(norm_event(e) for e in results if (e.get("location_coordinates") or {}).get("lat"))
+        for e in results:
+            if not (e.get("location_coordinates") or {}).get("lat"):
+                continue
+            ev = norm_event(e)
+            if is_relevant_event(ev):   # filet anti-recrutement/emploi
+                out.append(ev)
         if len(results) < 100:
             break
         offset += 100
