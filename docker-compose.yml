@@ -1,0 +1,36 @@
+# Infrastructure de développement pour GemensKarte.
+# Lance PostgreSQL+PostGIS et Meilisearch. L'API tourne sur l'hôte (pnpm dev:api).
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: gemenskarte-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gemenskarte
+      POSTGRES_PASSWORD: gemenskarte
+      POSTGRES_DB: gemenskarte
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gemenskarte -d gemenskarte"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    container_name: gemenskarte-search
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: devMasterKeyChangeMe
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili_data:/meili_data
+
+volumes:
+  db_data:
+  meili_data:

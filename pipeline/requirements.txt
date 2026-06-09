@@ -1,0 +1,7 @@
+# Dépendances Python du pipeline d'enrichissement.
+# Installer dans un venv :  python -m venv .venv && .venv/Scripts/pip install -r requirements.txt
+psycopg[binary]      # client PostgreSQL
+ddgs                 # recherche DuckDuckGo
+httpx                # requêtes HTTP (test de liens, fetch de pages, API OpenAgenda)
+readability-lxml     # extrait le texte principal d'une page web (pour le jugement LLM)
+ollama               # client du LLM local (Ollama) tournant sur le GPU

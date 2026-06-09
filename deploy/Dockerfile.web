@@ -1,0 +1,13 @@
+# Front React/Vite → build statique servi par nginx (avec proxy /api → api:3000).
+FROM node:20-bookworm-slim AS build
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN pnpm install --no-frozen-lockfile \
+ && pnpm --filter @gemenskarte/shared build \
+ && pnpm --filter @gemenskarte/web build
+
+FROM nginx:1.27-alpine
+COPY --from=build /app/apps/web/dist /usr/share/nginx/html
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

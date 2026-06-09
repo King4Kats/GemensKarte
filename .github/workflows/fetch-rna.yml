@@ -1,0 +1,128 @@
+name: Fetch RNA data
+
+# Télécharge le Répertoire National des Associations (fichier waldec) depuis
+# data.gouv.fr — possible ici car les runners GitHub ont un accès réseau ouvert,
+# contrairement à l'environnement de dev. Filtre sur le périmètre couvert
+# (Bretagne / Pays de la Loire / Normandie), compresse en .csv.gz et committe
+# le résultat dans data/rna/. L'importeur sait lire ce .gz directement.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 5 5 * *" # le 5 de chaque mois (le RNA est publié mensuellement)
+  push:
+    paths:
+      - ".github/workflows/fetch-rna.yml" # se déclenche quand on (re)pousse ce workflow
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fetch-rna-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Télécharger le fichier RNA waldec
+        run: |
+          set -euo pipefail
+          UA="Mozilla/5.0 (X11; Linux x86_64) GemensKarte-bot"
+
+          find_csv() { # $1 = slug du dataset → imprime l'URL d'une ressource CSV waldec
+            curl -fsSL -A "$UA" "https://www.data.gouv.fr/api/1/datasets/$1/" -o ds.json
+            jq -r '
+              [ .resources[]
+                | select((.format // "" | ascii_downcase) == "csv")
+                | select(((.title // "") + " " + (.url // "")) | ascii_downcase | test("waldec"))
+              ] | (.[0].url // empty)' ds.json
+          }
+
+          URL="$(find_csv rna-agrege-a-lechelle-nationale || true)"
+          if [ -z "${URL:-}" ]; then
+            echo "Agrégé indisponible, repli sur le dataset principal…"
+            URL="$(find_csv repertoire-national-des-associations || true)"
+          fi
+          if [ -z "${URL:-}" ]; then
+            echo "::error::Aucune ressource CSV waldec trouvée sur data.gouv.fr"; exit 1
+          fi
+          echo "Ressource : $URL"
+          curl -fSL -A "$UA" "$URL" -o rna_raw
+
+          # Déballe selon le type réel (csv brut, gzip ou zip)
+          TYPE="$(file -b --mime-type rna_raw || echo unknown)"
+          echo "type=$TYPE"
+          case "$TYPE" in
+            application/gzip|application/x-gzip) gunzip -c rna_raw > rna.csv ;;
+            application/zip) unzip -p rna_raw '*.csv' > rna.csv ;;
+            *) mv rna_raw rna.csv ;;
+          esac
+          echo "lignes brutes : $(wc -l < rna.csv)"
+
+      - name: Filtrer le périmètre couvert et compresser
+        run: |
+          set -euo pipefail
+          mkdir -p data/rna
+          echo "En-tête du fichier source :"
+          head -1 rna.csv
+          python3 - <<'PY'
+          import csv, gzip, sys
+          csv.field_size_limit(10_000_000)
+          keep = {"22","29","35","56",          # Bretagne
+                  "44","49","53","72","85",      # Pays de la Loire
+                  "14","27","50","61","76"}      # Normandie
+          src = "rna.csv"
+          dst = "data/rna/rna_covered.csv.gz"
+
+          # Détecte le séparateur sur la 1re ligne (l'agrégé peut être en ',' ou ';')
+          with open(src, newline="", encoding="utf-8", errors="replace") as f:
+              first = f.readline()
+          delim = ";" if first.count(";") >= first.count(",") else ","
+          print(f"séparateur détecté : {delim!r}")
+
+          with open(src, newline="", encoding="utf-8", errors="replace") as f, \
+               gzip.open(dst, "wt", encoding="utf-8", newline="") as out:
+              r = csv.reader(f, delimiter=delim)
+              w = csv.writer(out, delimiter=";")  # on normalise en ';' (lu par l'importeur)
+              header = next(r)
+              print("colonnes :", ";".join(header))
+              w.writerow(header)
+
+              low = [h.strip().lower() for h in header]
+              cands = ["adrs_codepostal", "adresse_codepostal", "code_postal", "codepostal", "cp"]
+              i = next((low.index(c) for c in cands if c in low), None)
+              if i is None:
+                  i = next((k for k, h in enumerate(low)
+                            if "codepostal" in h or "code_postal" in h
+                            or ("postal" in h and "cod" in h)), None)
+              if i is None:
+                  raise SystemExit("colonne code postal introuvable — en-tête ci-dessus")
+              print(f"colonne code postal : {header[i]!r} (index {i})")
+
+              kept = 0
+              for row in r:
+                  if len(row) > i and row[i][:2] in keep:
+                      w.writerow(row); kept += 1
+          print(f"associations conservées : {kept}")
+          PY
+          SZ=$(stat -c%s data/rna/rna_covered.csv.gz)
+          echo "taille gz : $SZ octets"
+          if [ "$SZ" -gt 95000000 ]; then
+            echo "::error::Fichier > 95 Mo : dépasse la limite GitHub. Découper par département."; exit 1
+          fi
+
+      - name: Committer le fichier
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/rna/rna_covered.csv.gz
+          if git diff --cached --quiet; then
+            echo "Aucun changement à committer."
+          else
+            git commit -m "data: RNA waldec périmètre couvert ($(date +%Y-%m-%d)) [skip ci]"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi

@@ -1,0 +1,11 @@
+# API NestJS (monorepo pnpm). Build complet : shared + api. Garde les devDeps
+# (ts-node) pour pouvoir lancer migrate/seed/reindex/import dans le conteneur.
+FROM node:20-bookworm-slim
+RUN corepack enable
+WORKDIR /app
+COPY . .
+RUN pnpm install --no-frozen-lockfile \
+ && pnpm --filter @gemenskarte/shared build \
+ && pnpm --filter @gemenskarte/api build
+EXPOSE 3000
+CMD ["node", "apps/api/dist/main.js"]

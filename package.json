@@ -1,0 +1,26 @@
+{
+  "name": "gemenskarte",
+  "version": "0.1.0",
+  "private": true,
+  "description": "GemensKarte — la carte du territoire de tes assos (backend + intégrations)",
+  "license": "AGPL-3.0-or-later",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "build": "pnpm -r build",
+    "dev:api": "pnpm --filter @gemenskarte/api start:dev",
+    "dev:web": "pnpm --filter @gemenskarte/web dev",
+    "db:migrate": "pnpm --filter @gemenskarte/api db:migrate",
+    "db:seed": "pnpm --filter @gemenskarte/api db:seed",
+    "search:reindex": "pnpm --filter @gemenskarte/api search:reindex",
+    "import:rna": "pnpm --filter @gemenskarte/api import:rna"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
