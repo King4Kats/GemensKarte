@@ -1,10 +1,10 @@
 # GemensKarte — superviseur autonome du pipeline.
-# Lancé par une tâche planifiée (au logon). Possède : 2 tunnels SSH + jobs scrap + apply/press
+# Lancé par une tâche planifiée (au logon). Possède : 2 tunnels SSH + jobs scrap + apply/reap/score
 # périodiques. Auto-répare tunnels et jobs morts. Tout est idempotent/reprenable.
 #
 # DEUX TUNNELS pour répartir la charge DB (un seul forward SSH sérialise tout le trafic) :
 #   5433 (tunnel A) : jobs DDG/LLM, écritures DB légères -> discover, verify, helloasso, fb->site
-#   5434 (tunnel B) : jobs DB-lourds + bloc périodique  -> liveness, events, apply/press/reap/score
+#   5434 (tunnel B) : jobs DB-lourds + bloc périodique  -> liveness, events, apply/reap/purge/score
 # Aucune exposition réseau (juste 2 connexions SSH locales).
 
 $ErrorActionPreference = 'Continue'
@@ -131,12 +131,12 @@ while ($true) {
   # Bloc périodique DB-lourd toutes les ~10 min sur tunnel B (idempotent).
   if ($cycle % 5 -eq 0 -and (Test-Port 5434)) {
     $env:DATABASE_URL = $DSN_B
-    try { & $py apply.py        *>> "$dir\_applyLoop.log" } catch { Log "apply: $_" }
-    try { & $py press_filter.py *>> "$dir\_pressLoop.log" } catch { Log "press: $_" }
-    try { & $py reap_dead.py    *>> "$dir\_reapLoop.log" } catch { Log "reap: $_" }
-    try { & $py score.py        *>> "$dir\_scoreLoop.log" } catch { Log "score: $_" }
+    try { & $py apply.py             *>> "$dir\_applyLoop.log" } catch { Log "apply: $_" }
+    try { & $py reap_dead.py         *>> "$dir\_reapLoop.log" } catch { Log "reap: $_" }
+    try { & $py purge_directories.py *>> "$dir\_purgeDirLoop.log" } catch { Log "purgeDir: $_" }
+    try { & $py score.py             *>> "$dir\_scoreLoop.log" } catch { Log "score: $_" }
     try { & $py fb_promote.py --limit 30 *>> "$dir\_fbPromoteLoop.log" } catch { Log "fbpromote: $_" }
-    Log "apply+press+reap+score+fbpromote exécutés (cycle $cycle)"
+    Log "apply+reap+purgeDir+score+fbpromote exécutés (cycle $cycle)"
   }
   $cycle++
   Start-Sleep -Seconds 120

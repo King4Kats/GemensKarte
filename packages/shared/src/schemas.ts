@@ -46,15 +46,6 @@ export const Association = z.object({
   action: z.string().nullable().optional(),
   status: AssociationStatus,
   source: z.enum(["manual", "rna"]),
-  /** Articles de presse mentionnant l'association. */
-  pressArticles: z.array(z.object({
-    title: z.string(),
-    url: z.string(),
-    source: z.string(),
-    domain: z.string().optional(),
-    snippet: z.string(),
-    publishedAt: z.string().optional(),
-  })).optional(),
   /** Score qualité/fraîcheur calculé par le pipeline (0-100 + tier + flags). */
   qualityScore: z.object({
     score: z.number(),

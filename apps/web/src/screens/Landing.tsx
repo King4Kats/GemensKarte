@@ -330,7 +330,7 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
             {([
               ["🌐", "Site web officiel"], ["📘", "Réseaux sociaux"], ["💛", "HelloAsso (dons)"],
-              ["📰", "Articles de presse"], ["📅", "Agenda à venir"], ["💀", "Liens morts retirés"],
+              ["📅", "Agenda à venir"], ["💀", "Liens morts retirés"],
             ] as const).map(([e, l]) => (
               <span key={l} style={{
                 display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 16px",
@@ -543,7 +543,6 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
                 { key: "avecWebsite",    emoji: "🌐", label: "Site web officiel",        color: "#7b3ff2" },
                 { key: "avecFacebook",   emoji: "📘", label: "Page Facebook",            color: "#1877f2" },
                 { key: "avecInstagram",  emoji: "📸", label: "Compte Instagram",         color: "#e1306c" },
-                { key: "avecPresse",     emoji: "📰", label: "Articles de presse",       color: "#e2001a" },
                 { key: "avecSocial",     emoji: "✅", label: "Fiche avec au moins 1 lien", color: "#00d68f" },
                 { key: "ficheVide",      emoji: "⬜", label: "Fiche RNA seule",          color: "#9ca3af" },
               ] as const).map(({ key, emoji, label, color }) => {
