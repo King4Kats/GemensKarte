@@ -263,6 +263,110 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
         </div>
       </section>
 
+      {/* ── Section Qualité des données / Comment on scrape ── */}
+      <section style={{ padding: "96px clamp(24px, 8vw, 120px)" }}>
+        <div style={{ maxWidth: 980, margin: "0 auto" }}>
+
+          {/* En-tête */}
+          <div style={{ textAlign: "center", maxWidth: 660, margin: "0 auto 56px" }}>
+            <span className="eyebrow" style={{ marginBottom: 12, display: "block" }}>Qualité des données</span>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 16px", lineHeight: 1.1 }}>
+              Des fiches vérifiées, pas devinées
+            </h2>
+            <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: 0, textWrap: "pretty" as never }}>
+              On part des données officielles (souvent pauvres), puis chaque lien est <strong>cherché sur le web</strong>
+              et <strong>validé par une IA</strong> avant d'apparaître. Notre règle&nbsp;: <strong>mieux vaut une fiche
+              vide qu'une fiche fausse.</strong>
+            </p>
+          </div>
+
+          {/* Les 3 étapes du pipeline */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+            {([
+              { c: "#3B6BFF", n: "1", emoji: "🔍", t: "On cherche", d: "Pour chaque association, on interroge le web (moteur de recherche) pour trouver ses liens : site, Facebook, Instagram, HelloAsso." },
+              { c: "#EC2D8A", n: "2", emoji: "🧠", t: "On vérifie (IA)", d: "Une IA lit la page (ou son extrait) et tranche : ce lien appartient-il vraiment à CETTE association ? Elle attribue un niveau de confiance." },
+              { c: "#19C37D", n: "3", emoji: "✅", t: "On affiche", d: "Seuls les liens confirmés sont publiés. Les liens douteux partent en revue, les liens faux sont écartés." },
+            ] as const).map((s) => (
+              <div key={s.n} style={{
+                position: "relative", borderRadius: "var(--radius)", background: "var(--bg)",
+                border: "1px solid var(--hairline)", boxShadow: "var(--shadow-card)", padding: "22px 20px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span style={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: 11, background: `color-mix(in srgb, ${s.c} 14%, white)`, fontSize: 18 }}>{s.emoji}</span>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: s.c }}>Étape {s.n}</span>
+                </div>
+                <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", marginBottom: 6 }}>{s.t}</div>
+                <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ink-2)", margin: 0 }}>{s.d}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Règle d'or */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: 12, marginTop: 16, padding: "14px 18px",
+            borderRadius: "var(--radius)", background: "color-mix(in srgb, #19C37D 8%, white)",
+            border: "1px solid color-mix(in srgb, #19C37D 28%, white)",
+          }}>
+            <span style={{ fontSize: 20 }}>🛡️</span>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)", lineHeight: 1.5 }}>
+              <strong>Règle d'or :</strong> on privilégie la justesse à l'exhaustivité. Si on n'est pas sûr,
+              on n'affiche rien — plutôt que de te montrer le mauvais Facebook ou un site qui n'existe plus.
+            </span>
+          </div>
+
+          {/* Ce qu'on enrichit */}
+          <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", margin: "56px 0 18px", textAlign: "center" }}>
+            Ce qu'on enrichit &amp; nettoie pour toi
+          </h3>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
+            {([
+              ["🌐", "Site web officiel"], ["📘", "Réseaux sociaux"], ["💛", "HelloAsso (dons)"],
+              ["📰", "Articles de presse"], ["📅", "Agenda à venir"], ["💀", "Liens morts retirés"],
+            ] as const).map(([e, l]) => (
+              <span key={l} style={{
+                display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 16px",
+                borderRadius: "var(--radius-pill)", background: "var(--bg)", border: "1.5px solid var(--hairline)",
+                fontSize: 14, fontWeight: 700, color: "var(--ink)",
+              }}>
+                <span style={{ fontSize: 16 }}>{e}</span>{l}
+              </span>
+            ))}
+          </div>
+
+          {/* Le score de qualité */}
+          <div style={{ marginTop: 64, borderRadius: "var(--radius-lg, 22px)", background: "var(--bg-soft)", padding: "clamp(28px, 4vw, 44px)" }}>
+            <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 28px" }}>
+              <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", margin: "0 0 10px" }}>
+                Une note de qualité par fiche
+              </h3>
+              <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--ink-2)", margin: 0 }}>
+                Chaque fiche reçoit une note&nbsp;/100 et un niveau, selon la <strong>richesse de ses liens</strong>,
+                leur <strong>disponibilité</strong> (liens vivants), la <strong>fraîcheur</strong> des infos et la
+                présence d'un <strong>agenda</strong>. Tu la vois en haut de chaque fiche.
+              </p>
+            </div>
+            {/* Les 4 niveaux */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 22 }}>
+              {([
+                { tier: "A", c: "#00b87a", l: "Excellente", d: "liens vérifiés, vivants, à jour" },
+                { tier: "B", c: "#2b7fff", l: "Bonne", d: "bien fournie, quelques manques" },
+                { tier: "C", c: "#f5a623", l: "Correcte", d: "des infos, à compléter" },
+                { tier: "D", c: "#9ca3af", l: "À enrichir", d: "fiche encore pauvre" },
+              ] as const).map((t) => (
+                <div key={t.tier} style={{ background: "var(--bg)", borderRadius: "var(--radius)", border: "1px solid var(--hairline)", padding: "16px 16px 14px", textAlign: "center" }}>
+                  <span style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: "50%", background: t.c, color: "#fff", fontSize: 18, fontWeight: 800, margin: "0 auto 8px" }}>{t.tier}</span>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>{t.l}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{t.d}</div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", margin: 0, fontStyle: "italic" }}>
+              La note grimpe toute seule au fil de l'enrichissement automatique, et sert aussi à repérer les fiches à retravailler en priorité.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ── Section Espace Ressources ── */}
       <section style={{ padding: "96px clamp(24px, 8vw, 120px)" }}>
         <div style={{ maxWidth: 880, margin: "0 auto" }}>
