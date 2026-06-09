@@ -21,7 +21,7 @@ echo "⏳ Attente de l'API sur $BASE …"
 for _ in $(seq 1 60); do curl -s -m2 "$BASE/health" >/dev/null 2>&1 && break; sleep 1; done
 
 check "health"              "$(curl -s "$BASE/health")" '"status":"ok"'
-check "categories = 6"      "$(curl -s "$BASE/categories" | j 'console.log(JSON.parse(require("fs").readFileSync(0)).length)')" '^6$'
+check "categories = 7"      "$(curl -s "$BASE/categories" | j 'console.log(JSON.parse(require("fs").readFileSync(0)).length)')" '^7$'
 check "list total présent"  "$(curl -s "$BASE/associations?limit=1")" '"total":'
 check "filtre category=eco" "$(curl -s "$BASE/associations?category=eco&limit=5" | j 'const d=JSON.parse(require("fs").readFileSync(0));console.log(d.items.every(a=>a.categoryId==="eco")?"OK":"KO")')" 'OK'
 check "tri par distance"    "$(curl -s "$BASE/associations?near=-1.55,47.21&limit=3" | j 'const d=JSON.parse(require("fs").readFileSync(0)).items.map(a=>a.distanceM);console.log(d[0]!=null&&d[0]<=d[1]?"OK":"KO")')" 'OK'
