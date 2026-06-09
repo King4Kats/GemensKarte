@@ -377,7 +377,7 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
       </section>
 
       {/* ── Section Espace Ressources ── */}
-      <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)" }}>
+      <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
         <ConfettiField count={14} seed={47} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
@@ -523,7 +523,7 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
       {modal && <ContactModal mode={modal} onClose={() => setModal(null)} />}
 
       {/* ── Section Données ouvertes ── */}
-      <section id="stats" style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
+      <section id="stats" style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)" }}>
         <ConfettiField count={14} seed={71} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
           <span className="eyebrow" style={{ marginBottom: 12, display: "block" }}>Open data</span>
