@@ -14,6 +14,7 @@ import { SearchBar } from "../components/SearchBar";
 import { DepartmentMap } from "../components/DepartmentMap";
 import { Icon } from "../components/Icon";
 import { STRIPE_DON_URL } from "../lib/config";
+import { useIsMobile } from "../lib/useIsMobile";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
 import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
@@ -106,6 +107,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   dept?: DeptMeta | null;
 }) {
   const [q, setQ] = useState("");
+  const isMobile = useIsMobile();
   const [modal, setModal] = useState<"recenser" | "deferencer" | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [total, setTotal] = useState<number | null>(null);
@@ -161,13 +163,19 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             </span>
           )}
         </div>
+        {/* Sur téléphone, on n'affiche que le bouton "Soutenir" (les autres liens
+            sont accessibles en faisant défiler la page : carte, données…). */}
         <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
           {onPortal && (
             <button className="btn btn-sm" style={navLink} onClick={onPortal}>← Territoires</button>
           )}
-          <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
-          <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
-          <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
+          {!isMobile && (
+            <>
+              <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
+              <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
+              <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
+            </>
+          )}
           <a className="btn btn-accent btn-sm" href="#dons" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Icon name="heart" size={14} stroke={2.4} /> Soutenir
           </a>
