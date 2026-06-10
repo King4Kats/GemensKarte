@@ -64,7 +64,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
           onChange={(e) => { onChange(e.target.value); setOpen(true); setHi(-1); }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKey}
-          placeholder={big ? "Que cherchez-vous ?  Où ?" : "Rechercher une asso, une ville…"}
+          placeholder={big ? "Rechercher une association, une ville…" : "Rechercher une asso, une ville…"}
           style={{
             flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent",
             fontFamily: "var(--font)", fontWeight: 600,

@@ -6,7 +6,7 @@ import { SearchBar } from "../components/SearchBar";
 import { DepartmentMap } from "../components/DepartmentMap";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
-import { REGION_COLOR, type DeptMeta } from "../data/departements";
+import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
 
 export interface ExploreOpts {
   q?: string;
@@ -104,7 +104,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
   const stats = [
     { n: total !== null ? animCount.toLocaleString("fr-FR") : "…", l: "associations" },
-    { n: "3", l: "régions" },
+    { n: String(READY_CODES.length), l: READY_CODES.length > 1 ? "territoires" : "territoire" },
     { n: "7", l: "univers" },
     { n: "100%", l: "open-source" },
   ];
@@ -165,7 +165,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
                 <i key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: c, animation: `cmPulse 2.4s ease ${i * 0.4}s infinite` }} />
               ))}
             </span>
-            {dept ? `${dept.nom} · ${dept.region}` : "Bretagne · Pays de la Loire · Normandie"}
+            {dept ? `${dept.nom} · ${dept.region}` : "Carte des associations locales"}
           </span>
 
           {/* H1 */}
@@ -174,8 +174,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             opacity: 0, animation: "cmSlideUp .6s cubic-bezier(.22,1,.36,1) .18s forwards",
           }}>
             Le territoire<br />
-            de <span style={{ position: "relative", color: "var(--accent)", whiteSpace: "nowrap" }}>
-              tes assos
+            <span style={{ position: "relative", color: "var(--accent)", whiteSpace: "nowrap" }}>
+              associatif
               <svg viewBox="0 0 240 18" preserveAspectRatio="none" style={{ position: "absolute", left: 0, right: 0, bottom: "-0.12em", width: "100%", height: "0.22em", overflow: "visible" }}>
                 <path d="M3 13 C 60 4, 180 4, 237 11" fill="none" stroke="var(--accent)" strokeWidth="5" strokeLinecap="round"
                   pathLength="1" strokeDasharray="1" strokeDashoffset="1"
@@ -190,7 +190,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             margin: "0 0 40px", maxWidth: 560, fontWeight: 500, textWrap: "balance" as never,
             opacity: 0, animation: "cmSlideUp .6s cubic-bezier(.22,1,.36,1) .28s forwards",
           }}>
-            Répertorie, découvre et rejoins les associations qui font vivre ta région.
+            Répertorier, découvrir et rejoindre les associations qui font vivre le territoire.
             Une carte, mille élans citoyens.
           </p>
 
@@ -255,8 +255,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         {/* Pillules illustratives */}
         <div style={{ flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 16 }}>
           {[
-            { emoji: "📍", label: "18 554 associations référencées" },
-            { emoji: "🗺️", label: dept ? `${dept.nom} · ${dept.region}` : "Bretagne, Pays de la Loire, Normandie" },
+            { emoji: "📍", label: `${total?.toLocaleString("fr-FR") ?? "…"} associations référencées` },
+            { emoji: "🗺️", label: "Vendée — d'autres territoires à venir" },
             { emoji: "🔍", label: "Recherche par type, ville, distance" },
             { emoji: "🤝", label: "Entièrement bénévole & open-source" },
           ].map((it) => (
@@ -328,14 +328,14 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           }}>
             <span style={{ fontSize: 20 }}>🛡️</span>
             <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)", lineHeight: 1.5 }}>
-              <strong>Règle d'or :</strong> on privilégie la justesse à l'exhaustivité. Si on n'est pas sûr,
-              on n'affiche rien — plutôt que de te montrer le mauvais Facebook ou un site qui n'existe plus.
+              <strong>Règle d'or :</strong> on privilégie la justesse à l'exhaustivité. En cas de doute,
+              rien n'est affiché — plutôt que d'afficher le mauvais Facebook ou un site qui n'existe plus.
             </span>
           </div>
 
           {/* Ce qu'on enrichit */}
           <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", margin: "56px 0 18px", textAlign: "center" }}>
-            Ce qu'on enrichit &amp; nettoie pour toi
+            Ce qu'on enrichit &amp; nettoie
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
             {([
@@ -361,7 +361,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
               <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--ink-2)", margin: 0 }}>
                 Chaque fiche reçoit une note&nbsp;/100 et un niveau, selon la <strong>richesse de ses liens</strong>,
                 leur <strong>disponibilité</strong> (liens vivants), la <strong>fraîcheur</strong> des infos et la
-                présence d'un <strong>agenda</strong>. Tu la vois en haut de chaque fiche.
+                présence d'un <strong>agenda</strong>. Elle apparaît en haut de chaque fiche.
               </p>
             </div>
             {/* Les 4 niveaux */}
@@ -448,7 +448,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
                 source: "Ouest-France",
                 favicon: "infolocale.ouest-france.fr",
                 title: "Infolocale Vendée",
-                desc: "Publiez gratuitement vos événements et actualités associatives auprès des lecteurs vendéens.",
+                desc: "Publication gratuite des événements et actualités associatives auprès des lecteurs vendéens.",
                 href: "https://infolocale.ouest-france.fr/?dpt=vendee",
               },
             ] as const).map((res) => (
