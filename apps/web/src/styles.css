@@ -384,3 +384,19 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ============================================================
+   Mobile / téléphone (<= 760px)
+   ============================================================ */
+@media (max-width: 760px) {
+  /* Empêche tout débordement horizontal (cause classique de scroll latéral
+     parasite sur mobile dès qu'un élément dépasse un peu). */
+  html, body { overflow-x: hidden; }
+
+  /* Boutons un peu plus compacts pour gagner de la place. */
+  .btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; }
+  .btn-md { height: 44px; padding: 0 18px; }
+
+  /* Popups de la carte un peu plus petits sur petit écran. */
+  .cm-pop .cm-pop-inner { max-width: 70vw; }
+}

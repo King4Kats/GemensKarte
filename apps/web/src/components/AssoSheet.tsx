@@ -146,7 +146,8 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
         className="cm-scroll"
         style={{
           position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 1201,
-          width: "min(440px, 92vw)", background: "var(--bg)",
+          // 440px sur ordinateur ; sur téléphone min() bascule à 100vw = plein écran.
+          width: "min(440px, 100vw)", background: "var(--bg)",
           boxShadow: "var(--shadow-sheet)", overflowY: "auto",
           transform: asso ? "translateX(0)" : "translateX(102%)",
           transition: "transform .4s cubic-bezier(.5,.1,.25,1)",
