@@ -148,6 +148,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
       {/* ── Header ── */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexWrap: "wrap", gap: 10,
         padding: "22px clamp(20px, 5vw, 64px)", position: "relative", zIndex: 5,
         opacity: 0, animation: "cmFadeDown .5s ease .05s forwards",
       }}>
@@ -161,7 +162,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             </span>
           )}
         </div>
-        <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <nav style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
           {onPortal && (
             <button className="btn btn-sm" style={navLink} onClick={onPortal}>← Territoires</button>
           )}
