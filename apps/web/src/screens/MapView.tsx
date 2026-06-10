@@ -22,6 +22,16 @@ import type { DeptMeta } from "../data/departements";
 // Barre de filtres : une pastille cliquable par catégorie. Cliquer active/désactive
 // le filtre. Un bouton "Tout afficher" apparait dès qu'au moins un filtre est actif.
 // (`active` = liste des id de catégories actuellement sélectionnées.)
+/** Normalise un nom de ville pour comparer sans accents/casse/espaces multiples
+ *  (la base contient parfois "La   Roche-sur-Yon" avec plusieurs espaces). */
+function normCity(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
+}
+/** Nettoie l'affichage d'une ville (espaces multiples -> un seul). */
+function cleanCity(s: string): string {
+  return s.replace(/\s+/g, " ").trim();
+}
+
 function FilterBar({ active, onToggle, onClear }: { active: string[]; onToggle: (id: string) => void; onClear: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "nowrap" }}>
@@ -96,6 +106,50 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const openById = useCallback(async (id: string) => {
     try { const a = await api.get(id); openAssoFn(a); } catch { /* ignore */ }
   }, [openAssoFn]);
+
+  /* ---- recherche par VILLE -> zoom carte ---- */
+  // Index des villes présentes : nom normalisé -> { affichage, points de la ville }.
+  const cityIndex = useMemo(() => {
+    const m = new Map<string, { name: string; pts: GeoPoint[] }>();
+    for (const p of points) {
+      if (!p.city) continue;
+      const key = normCity(p.city);
+      if (!key) continue;
+      let e = m.get(key);
+      if (!e) { e = { name: cleanCity(p.city), pts: [] }; m.set(key, e); }
+      e.pts.push(p);
+    }
+    return m;
+  }, [points]);
+
+  // Villes proposées pour le texte tapé (max 4) : celles qui commencent par le texte
+  // d'abord, puis les plus fournies. Rien tant qu'on a tapé moins de 2 caractères.
+  const cityMatches = useMemo(() => {
+    const t = normCity(q);
+    if (t.length < 2) return [] as { name: string; count: number }[];
+    const out: { name: string; count: number; starts: boolean }[] = [];
+    for (const [key, e] of cityIndex) {
+      if (key.includes(t)) out.push({ name: e.name, count: e.pts.length, starts: key.startsWith(t) });
+    }
+    out.sort((a, b) => (a.starts === b.starts ? b.count - a.count : a.starts ? -1 : 1));
+    return out.slice(0, 4).map(({ name, count }) => ({ name, count }));
+  }, [q, cityIndex]);
+
+  // Zoome la carte sur une ville (ajuste la vue pour montrer toutes ses associations).
+  const zoomToCity = useCallback((name: string) => {
+    const e = cityIndex.get(normCity(name));
+    const m = mapRef.current;
+    if (!e || !m || e.pts.length === 0) return;
+    const bounds = L.latLngBounds(e.pts.map((p) => [p.lat, p.lng] as [number, number]));
+    m.fitBounds(bounds, { padding: [70, 70], maxZoom: 14, animate: true, duration: 0.7 });
+  }, [cityIndex]);
+
+  // Touche Entrée / bouton "Go" : si le texte correspond à une ville, on zoome dessus ;
+  // sinon on ouvre la 1re association proposée.
+  const onSearchSubmit = useCallback(() => {
+    if (cityMatches.length > 0) { zoomToCity(cityMatches[0].name); setOpenAsso(null); }
+    else if (suggestions[0]) void openById(suggestions[0].id);
+  }, [cityMatches, zoomToCity, suggestions, openById]);
 
   /* ---- suggestions (Meili) ---- */
   // À chaque frappe, on demande au moteur de recherche (Meilisearch) jusqu'à 6 propositions.
@@ -233,7 +287,9 @@ export function MapView({ initial, onHome, onPortal, dept }: {
           </span>
         )}
         <div style={{ flex: 1, maxWidth: 440 }}>
-          <SearchBar size="sm" value={q} onChange={setQ} suggestions={suggestions} onPick={(s) => openById(s.id)} onSubmit={() => {}} />
+          <SearchBar size="sm" value={q} onChange={setQ} suggestions={suggestions}
+            onPick={(s) => openById(s.id)} cities={cityMatches} onPickCity={zoomToCity}
+            onSubmit={onSearchSubmit} />
         </div>
         {onPortal && (
           <button className="btn btn-ghost btn-sm" onClick={onPortal} style={{ marginLeft: "auto" }}>

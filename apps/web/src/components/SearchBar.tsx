@@ -15,6 +15,9 @@ import type { Suggestion } from "../lib/api";
 import { catById } from "../lib/categories";
 import { Icon } from "./Icon";
 
+/** Suggestion de VILLE : cliquer dessus zoome la carte sur cette commune. */
+export interface CitySuggestion { name: string; count: number; }
+
 interface Props {
   size?: "lg" | "sm";
   autoFocus?: boolean;
@@ -23,9 +26,11 @@ interface Props {
   onSubmit?: () => void;
   suggestions?: Suggestion[];
   onPick: (s: Suggestion) => void;
+  cities?: CitySuggestion[];          // villes proposées (zoom carte au clic)
+  onPickCity?: (name: string) => void;
 }
 
-export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onSubmit, suggestions = [], onPick }: Props) {
+export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onSubmit, suggestions = [], onPick, cities = [], onPickCity }: Props) {
   const [open, setOpen] = useState(false); // la liste de suggestions est-elle ouverte ?
   const [hi, setHi] = useState(-1);        // index de la suggestion surlignée (-1 = aucune)
   const wrapRef = useRef<HTMLDivElement>(null); // référence vers la boîte, pour détecter les clics extérieurs
@@ -41,7 +46,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
 
   // On n'affiche les suggestions que si la liste est ouverte, qu'on a tapé
   // quelque chose, et qu'il y a au moins une suggestion à montrer.
-  const showSug = open && !!value && suggestions.length > 0;
+  const showSug = open && !!value && (suggestions.length > 0 || cities.length > 0);
   const big = size === "lg"; // "lg" = grande barre (accueil), "sm" = compacte (en-tête)
 
   // Navigation au clavier dans le champ de recherche.
@@ -104,6 +109,37 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
             padding: 8, maxHeight: 340, overflowY: "auto",
           }}
         >
+          {/* Villes d'abord : cliquer dessus zoome la carte sur la commune. */}
+          {cities.map((ct) => (
+            <button
+              key={`city-${ct.name}`}
+              onClick={() => { onPickCity?.(ct.name); setOpen(false); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 12, width: "100%",
+                textAlign: "left", border: 0, cursor: "pointer", background: "transparent",
+                borderRadius: 12, padding: "10px 12px", transition: "background .12s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunk)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ display: "grid", placeItems: "center", width: 26, height: 26, borderRadius: 8, background: "var(--bg-sunk)", color: "var(--accent)", flexShrink: 0 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </span>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "block", fontWeight: 700, fontSize: 14.5, color: "var(--ink)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {ct.name}
+                </span>
+                <span style={{ display: "block", fontSize: 12.5, color: "var(--muted)", fontWeight: 600 }}>
+                  Ville · {ct.count} association{ct.count > 1 ? "s" : ""}
+                </span>
+              </span>
+              <span style={{ color: "var(--muted)", display: "flex" }}>
+                <Icon name="arrowUpRight" size={16} stroke={2.2} />
+              </span>
+            </button>
+          ))}
           {suggestions.map((s, i) => {
             const c = catById(s.categoryId); // catégorie de l'asso : sert à colorer la pastille et afficher le libellé
             return (
