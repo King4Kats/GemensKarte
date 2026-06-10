@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 export type IconName =
   | "search" | "pin" | "arrow" | "arrowUpRight" | "close" | "users" | "mail"
   | "phone" | "globe" | "insta" | "facebook" | "heart" | "sparkle" | "calendar"
-  | "layers" | "list" | "check" | "chevron";
+  | "layers" | "list" | "check" | "chevron" | "map" | "square" | "shield";
 
 const PATHS: Record<IconName, ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></>,
@@ -24,6 +24,9 @@ const PATHS: Record<IconName, ReactNode> = {
   list: <><path d="M8 6h12M8 12h12M8 18h12" /><circle cx="4" cy="6" r="1" fill="currentColor" stroke="none" /><circle cx="4" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="4" cy="18" r="1" fill="currentColor" stroke="none" /></>,
   check: <><path d="m5 12 4.5 4.5L19 7" /></>,
   chevron: <><path d="m9 6 6 6-6 6" /></>,
+  map: <><path d="m9 4-6 2v14l6-2 6 2 6-2V4l-6 2-6-2Z" /><path d="M9 4v14" /><path d="M15 6v14" /></>,
+  square: <><rect x="4.5" y="4.5" width="15" height="15" rx="3" /></>,
+  shield: <><path d="M12 3 5 6v5c0 4.3 3 7.4 7 9 4-1.6 7-4.7 7-9V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></>,
 };
 
 export function Icon({ name, size = 18, stroke = 2 }: { name: IconName; size?: number; stroke?: number }) {
