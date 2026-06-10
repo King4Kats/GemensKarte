@@ -195,6 +195,10 @@ export class AssociationsService {
       SELECT id, name, category_id, city, ST_X(location) AS lng, ST_Y(location) AS lat
       FROM associations
       WHERE ${where} AND location IS NOT NULL
+        -- Exclut les points (0,0) : échecs de géocodage stockés à tort en Point(0,0)
+        -- (ils apparaissaient au large de l'Afrique, golfe de Guinée). Aucune asso
+        -- française n'a une latitude proche de 0, donc ce filtre ne retire qu'eux.
+        AND NOT (ST_X(location) BETWEEN -1 AND 1 AND ST_Y(location) BETWEEN -1 AND 1)
       LIMIT 50000
     `);
 
