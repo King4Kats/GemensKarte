@@ -1,3 +1,11 @@
+/**
+ * Page d'accueil (landing) de GemensKarte.
+ * C'est la vitrine du site : grand titre, carte des départements pour choisir
+ * un territoire, statistiques animées, explication de la qualité des données,
+ * ressources utiles, appel aux dons et pied de page.
+ * Tout le contenu visuel est défini ici en JSX (le HTML version React),
+ * avec des styles écrits directement dans le code (style inline).
+ */
 import { useEffect, useRef, useState } from "react";
 import { api, type Suggestion } from "../lib/api";
 import { CATEGORIES, catById } from "../lib/categories";
@@ -10,6 +18,8 @@ import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
 import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
 
+// Options passées quand on quitte l'accueil pour aller explorer la carte
+// (recherche tapée, catégorie choisie, fiche à ouvrir).
 export interface ExploreOpts {
   q?: string;
   cat?: string;
@@ -17,6 +27,10 @@ export interface ExploreOpts {
 }
 
 // ── Compteur animé ─────────────────────────────────────────────────────────
+// Hook (fonction réutilisable React) qui fait grimper un nombre de 0 jusqu'à
+// `target` en douceur, pour l'effet "compteur qui défile" sur les stats.
+// Tant que `target` est null (donnée pas encore chargée), rien ne démarre ;
+// le `startedRef` garantit que l'animation ne se relance qu'une seule fois.
 function useCountUp(target: number | null, duration = 1800) {
   const [count, setCount] = useState(0);
   const startedRef = useRef(false);
@@ -24,6 +38,8 @@ function useCountUp(target: number | null, duration = 1800) {
     if (target === null || startedRef.current) return;
     startedRef.current = true;
     const startTime = performance.now();
+    // À chaque image de l'animation : on calcule la progression (0 → 1),
+    // on applique une courbe d'accélération douce (ease) puis on met le nombre à jour.
     const tick = (now: number) => {
       const p = Math.min((now - startTime) / duration, 1);
       const ease = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
@@ -38,6 +54,9 @@ function useCountUp(target: number | null, duration = 1800) {
 }
 
 // ── Chip catégorie ──────────────────────────────────────────────────────────
+// Petit bouton-pastille pour une catégorie d'association (avec sa pastille de
+// couleur et son libellé). Au survol, on change directement le style de
+// l'élément pour l'effet de surbrillance. `delay` décale l'animation d'entrée.
 function CatChip({ cat, onClick, delay }: { cat: string; onClick: (c: string) => void; delay: number }) {
   const c = catById(cat);
   return (
@@ -76,6 +95,10 @@ function CatChip({ cat, onClick, delay }: { cat: string; onClick: (c: string) =>
 const navLink = { background: "transparent", color: "var(--ink)", fontWeight: 700 } as const;
 
 // ── Landing ─────────────────────────────────────────────────────────────────
+// Composant principal de la page d'accueil.
+// Les `props` sont des fonctions fournies par le parent : onSelect (un
+// département a été cliqué), onExplore (aller vers la carte), onPortal (revenir
+// au choix des territoires), et `dept` = territoire éventuellement déjà choisi.
 export function Landing({ onSelect, onExplore, onPortal, dept }: {
   onSelect: (d: DeptMeta) => void;
   onExplore?: (o: ExploreOpts) => void;
@@ -89,11 +112,16 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   const [dataStats, setDataStats] = useState<Record<string, { n: number; pct: number }> & { total?: number } | null>(null);
   const animCount = useCountUp(total);
 
+  // Au premier affichage de la page : on demande à l'API le nombre total
+  // d'associations et les statistiques détaillées (pour la section "données").
   useEffect(() => {
     api.list({ limit: 1 }).then((r) => setTotal(r.total)).catch(() => setTotal(null));
     (api.fetchStats as () => Promise<any>)().then(setDataStats).catch(() => {});
   }, []);
 
+  // Suggestions de recherche en direct pendant la frappe.
+  // Le setTimeout de 160 ms est un "debounce" (on attend une petite pause dans
+  // la frappe avant d'appeler l'API) pour éviter une requête à chaque lettre.
   useEffect(() => {
     const t = q.trim();
     if (!t) { setSuggestions([]); return; }
@@ -104,6 +132,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   }, [q]);
 
 
+  // Les 4 chiffres clés affichés sous le titre. Le premier utilise le compteur
+  // animé ; tant que la donnée n'est pas arrivée, on affiche "…".
   const stats = [
     { n: total !== null ? animCount.toLocaleString("fr-FR") : "…", l: "associations" },
     { n: String(READY_CODES.length), l: READY_CODES.length > 1 ? "territoires" : "territoire" },
@@ -151,6 +181,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         padding: "20px clamp(20px, 5vw, 64px) 0", overflow: "hidden",
         minHeight: "calc(100vh - 80px)",
       }}>
+        {/* Pluie de confettis décorative en arrière-plan du hero */}
         <ConfettiField count={30} seed={11} />
 
         <div style={{
@@ -181,6 +212,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             Le territoire<br />
             <span style={{ position: "relative", color: "var(--accent)", whiteSpace: "nowrap" }}>
               des assos
+              {/* Trait dessiné à la main sous "des assos", animé pour se
+                  "tracer" tout seul (l'animation joue sur le pointillé du SVG) */}
               <svg viewBox="0 0 240 18" preserveAspectRatio="none" style={{ position: "absolute", left: 0, right: 0, bottom: "-0.12em", width: "100%", height: "0.22em", overflow: "visible" }}>
                 <path d="M3 13 C 60 4, 180 4, 237 11" fill="none" stroke="var(--accent)" strokeWidth="5" strokeLinecap="round"
                   pathLength="1" strokeDasharray="1" strokeDashoffset="1"
@@ -538,6 +571,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         </div>
       </section>
 
+      {/* Fenêtre de contact (référencer ou déréférencer une asso), affichée
+          seulement quand `modal` contient un mode. */}
       {modal && <ContactModal mode={modal} onClose={() => setModal(null)} />}
 
       {/* ── Section Données ouvertes ── */}
@@ -552,6 +587,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             enrichies automatiquement par nos scripts. Voici l'état exact en temps réel.
           </p>
 
+          {/* Si les stats sont chargées on affiche les cartes, sinon un message
+              d'attente. Chaque carte montre un pourcentage et une barre. */}
           {dataStats ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
               {([

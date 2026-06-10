@@ -1,3 +1,9 @@
+/**
+ * Logo — le logo de GemensKarte, cliquable (sert en général à revenir à l'accueil).
+ * À gauche : 4 petits ronds de couleur représentant les familles d'associations
+ * (culture, écologie, social, sport). À droite : le nom "GemensKarte".
+ * "size" pilote la taille globale ; les autres dimensions s'y ajustent.
+ */
 export function Logo({ size = 22, onClick }: { size?: number; onClick?: () => void }) {
   return (
     <button

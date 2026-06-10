@@ -1,6 +1,8 @@
-// Métadonnées des départements couverts par GemensKarte (périmètre RNA actuel :
-// Bretagne + Pays de la Loire + Normandie). Les tracés SVG vivent dans
-// `fr-departements-paths.ts` ; ici on décrit seulement les 14 territoires actifs.
+// Infos (nom, slug, région...) des départements couverts par GemensKarte
+// (périmètre actuel : Bretagne + Pays de la Loire + Normandie). Les tracés SVG
+// de la carte vivent ailleurs, dans `fr-departements-paths.ts` ; ce fichier-ci
+// décrit seulement les 14 territoires actifs et fournit des petites fonctions
+// utilitaires (est-il couvert ? est-il déjà en ligne ?).
 
 export interface DeptMeta {
   code: string;

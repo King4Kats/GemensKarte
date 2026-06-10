@@ -1,3 +1,10 @@
+/**
+ * Service "Associations" : le cœur métier du module.
+ * C'est lui qui parle à la base PostgreSQL/PostGIS (PostGIS = extension qui gère
+ * les données géographiques : points, distances...), géocode les adresses
+ * (transforme une adresse en coordonnées lat/lng) et tient à jour le moteur de
+ * recherche Meilisearch. Le contrôleur appelle ces méthodes.
+ */
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
   type Association,
@@ -48,6 +55,12 @@ const COLS = sql`
   ST_X(location) AS lng, ST_Y(location) AS lat,
   social, meta, tags, status, source`;
 
+/**
+ * Convertit une ligne brute de la base (noms en snake_case) vers l'objet
+ * Association utilisé par le reste de l'app (noms en camelCase).
+ * Au passage, on range les champs "fourre-tout" stockés dans meta (jsonb =
+ * colonne JSON souple) dans des propriétés propres et lisibles.
+ */
 function mapRow(r: Row): Association {
   const meta = (r.meta ?? {}) as {
     blurb?: string; members?: number; founded?: number; needs?: string; action?: string;
@@ -121,10 +134,17 @@ export class AssociationsService {
     return sql.join(conds, sql` AND `);
   }
 
+  /**
+   * Liste paginée des associations publiées.
+   * Si une position "near" est fournie, on calcule la distance de chaque asso à
+   * ce point et on trie du plus proche au plus loin ; sinon on trie par nom (ou
+   * par score qualité si demandé). Renvoie aussi le total pour la pagination.
+   */
   async list(q: ListAssociationsQuery): Promise<Paginated<Association>> {
     const where = this.buildWhere(q);
     const offset = (q.page - 1) * q.limit;
 
+    // distance en mètres jusqu'au point "near" (ou NULL si aucune position donnée).
     const distance = q.near
       ? sql`ST_DistanceSphere(location, ST_SetSRID(ST_MakePoint(${q.near.lng}, ${q.near.lat}), 4326))`
       : sql`NULL::float8`;
@@ -188,6 +208,7 @@ export class AssociationsService {
     };
   }
 
+  /** Récupère une seule association par son id ; erreur 404 si elle n'existe pas. */
   async findOne(id: string): Promise<Association> {
     const res = await this.db.execute<Row>(sql`
       SELECT ${COLS}, NULL::float8 AS distance_m
@@ -200,6 +221,8 @@ export class AssociationsService {
 
   /** Référencement public : crée une fiche en attente de modération. */
   async create(input: CreateAssociationInput): Promise<Association> {
+    // Si on a une adresse, on tente de trouver ses coordonnées (géocodage) pour
+    // pouvoir placer un point sur la carte. Si ça échoue, la fiche reste sans position.
     let lng: number | null = null;
     let lat: number | null = null;
     if (input.address && input.postalCode) {
@@ -243,6 +266,7 @@ export class AssociationsService {
     return created;
   }
 
+  /** Change la catégorie d'une fiche, puis réindexe dans Meilisearch pour la recherche. */
   async patchCategory(id: string, input: PatchCategoryInput): Promise<Association> {
     await this.db.execute(sql`
       UPDATE associations SET category_id = ${input.categoryId} WHERE id = ${id}

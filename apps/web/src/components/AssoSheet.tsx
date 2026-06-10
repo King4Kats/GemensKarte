@@ -1,3 +1,9 @@
+/**
+ * AssoSheet — le panneau de détail d'une association qui glisse depuis la droite
+ * quand on clique sur une carte. Il montre tout : nom, lieu, description, contact,
+ * réseaux sociaux, score de qualité de la fiche et agenda des événements à venir.
+ * Ce fichier contient aussi plusieurs petits composants d'affichage réutilisés à l'intérieur.
+ */
 import React from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { Association } from "../lib/api";
@@ -6,11 +12,14 @@ import { catById } from "../lib/categories";
 import { Icon, type IconName } from "./Icon";
 import { CatBadge } from "./CatBadge";
 
+// Style commun des petits titres de section ("À propos", "Contact"...).
 const sheetH: CSSProperties = {
   fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase",
   color: "var(--muted)", margin: "0 0 12px",
 };
 
+// Une ligne d'information avec une icône à gauche (ex : site web, e-mail, téléphone).
+// Si on lui donne un `href`, la ligne devient un lien cliquable.
 function SheetRow({ icon, children, href }: { icon: IconName; children: ReactNode; href?: string }) {
   const inner = (
     <span style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--hairline-2)" }}>
@@ -28,6 +37,7 @@ function SheetRow({ icon, children, href }: { icon: IconName; children: ReactNod
   ) : inner;
 }
 
+// Un bouton vers un réseau social (Facebook, Instagram, HelloAsso).
 function SocialBtn({ icon, label, href }: { icon: IconName; label: string; href: string }) {
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" style={{ flex: 1, minWidth: 130, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, height: 44, borderRadius: 13, border: "1.5px solid var(--hairline)", background: "var(--bg)", cursor: "pointer", fontFamily: "var(--font)", fontWeight: 700, fontSize: 13.5, color: "var(--ink)", textDecoration: "none" }}>
@@ -37,19 +47,23 @@ function SocialBtn({ icon, label, href }: { icon: IconName; label: string; href:
   );
 }
 
+// Table de correspondance : pour chaque réseau social connu, quelle icône et quel libellé utiliser.
 const SOCIAL_META: Record<string, { icon: IconName; label: string }> = {
   facebook: { icon: "facebook", label: "Facebook" },
   instagram: { icon: "insta", label: "Instagram" },
   helloasso: { icon: "heart", label: "HelloAsso" },
 };
 
+// Rend une URL plus jolie pour l'affichage : enlève "https://", "www." et le "/" final.
 function prettyUrl(u: string): string {
   return u.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
 }
 
+// Couleur et libellé selon le "niveau" de qualité de la fiche (A = très bien ... D = à enrichir).
 const TIER_COLOR: Record<string, string> = { A: "#00b87a", B: "#2b7fff", C: "#f5a623", D: "#9ca3af" };
 const TIER_LABEL: Record<string, string> = { A: "Excellente", B: "Bonne", C: "Correcte", D: "À enrichir" };
 
+// Pastille affichant la qualité de la fiche (note /100 + lettre). Le détail apparaît au survol (title).
 function QualityBadge({ score, tier }: { score: number; tier: string }) {
   const color = TIER_COLOR[tier] ?? "#9ca3af";
   return (
@@ -68,11 +82,14 @@ function QualityBadge({ score, tier }: { score: number; tier: string }) {
   );
 }
 
+// Forme d'un événement de l'agenda (provient d'OpenAgenda). Tous les champs sont optionnels.
 interface EventItem {
   title?: string | null; start?: string | null; dateLabel?: string | null;
   city?: string | null; place?: string | null; url?: string | null; matchedAsso?: boolean;
 }
 
+// Une ligne d'agenda : date, titre et lieu de l'événement.
+// Si une date brute est fournie sans libellé, on la met au format français lisible.
 function EventCard({ ev, color }: { ev: EventItem; color: string }) {
   const body = (
     <span style={{ display: "flex", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--hairline-2)" }}>
@@ -98,19 +115,24 @@ function EventCard({ ev, color }: { ev: EventItem; color: string }) {
     : body;
 }
 
+// Composant principal du panneau de détail.
+// `asso` vaut null quand aucune asso n'est sélectionnée (le panneau est alors caché/glissé hors écran).
 export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose: () => void }) {
-  const c = asso ? catById(asso.categoryId) : null;
+  const c = asso ? catById(asso.categoryId) : null; // couleur/libellé de la catégorie
   const website = asso?.social?.website ?? null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const events: EventItem[] = (asso as any)?.events ?? [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const quality = (asso as any)?.qualityScore ?? null;
+  // On garde uniquement les réseaux sociaux qu'on sait afficher (et qui ont une valeur),
+  // en excluant le site web traité à part.
   const socialLinks = Object.entries(asso?.social ?? {}).filter(
     ([k, v]) => k !== "website" && v && SOCIAL_META[k],
   ) as Array<[string, string]>;
 
   return (
     <>
+      {/* Voile sombre derrière le panneau : un clic dessus ferme la fiche. */}
       <div
         onClick={onClose}
         style={{

@@ -1,3 +1,12 @@
+/**
+ * Schémas de données partagés entre le front et l'API.
+ *
+ * On utilise Zod (une librairie qui décrit la "forme" attendue des données et
+ * vérifie qu'elles sont valides). Chaque schéma sert à deux choses :
+ * - valider/nettoyer les données entrantes (ex : les paramètres d'une requête) ;
+ * - générer automatiquement le type TypeScript correspondant (via z.infer),
+ *   pour éviter d'écrire deux fois la même structure.
+ */
 import { z } from "zod";
 import { CATEGORY_IDS } from "./categories";
 
@@ -8,6 +17,8 @@ export const REGIONS = ["Bretagne", "Pays de la Loire", "Normandie"] as const;
 export const AssociationStatus = z.enum(["published", "pending", "draft"]);
 export type AssociationStatus = z.infer<typeof AssociationStatus>;
 
+// Liens vers les réseaux sociaux d'une association.
+// Tout est optionnel (`.partial()`) : une asso peut n'en renseigner aucun.
 export const SocialLinks = z
   .object({
     website: z.string().url().optional(),
@@ -72,9 +83,13 @@ export type Association = z.infer<typeof Association>;
 
 /* ----------------------------- Requêtes ----------------------------- */
 
+// Dans une URL, tout arrive sous forme de texte ("20", pas le nombre 20).
+// `z.coerce.number()` convertit ce texte en vrai nombre automatiquement.
 const numeric = z.coerce.number();
 
 /** bbox = "minLng,minLat,maxLng,maxLat" (zone visible de la carte). */
+// On reçoit une chaîne "x,y,x,y", on la découpe, on vérifie qu'il y a bien
+// 4 nombres valides, puis on la transforme en objet pratique à utiliser.
 export const BBoxSchema = z
   .string()
   .transform((s) => s.split(",").map(Number))
@@ -98,8 +113,10 @@ const boolish = z.preprocess(
   z.boolean().optional(),
 );
 
+// Tous les filtres possibles de la liste d'associations, tels qu'ils arrivent
+// dans l'URL (ex : /api/associations?q=judo&category=sport&page=2).
 export const ListAssociationsQuery = z.object({
-  q: z.string().trim().min(1).optional(),
+  q: z.string().trim().min(1).optional(), // texte recherché
   category: z.enum(CATEGORY_IDS).optional(),
   categories: z
     .string()

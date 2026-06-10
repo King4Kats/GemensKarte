@@ -1,21 +1,31 @@
+/**
+ * AdminReview — outil d'administration pour vérifier/corriger rapidement la catégorie
+ * de chaque association, une par une. On voit la fiche, on choisit la bonne catégorie,
+ * et on passe à la suivante. Pensé pour aller vite au clavier (flèches, Entrée, touches 1-9).
+ * Ce n'est PAS visible par le grand public.
+ */
 import { useCallback, useEffect, useState } from "react";
 import { api, type Association } from "../lib/api";
 import { CATEGORIES, catById } from "../lib/categories";
 import { Icon } from "./Icon";
 
+// Liste des filtres en haut : "Toutes" + toutes les catégories réelles.
 const ALL_CATS = [{ id: "", label: "Toutes", color: "var(--ink-2)" }, ...CATEGORIES];
 
 export function AdminReview({ onClose }: { onClose: () => void }) {
-  const [filterCat, setFilterCat] = useState("social");
-  const [items, setItems] = useState<Association[]>([]);
-  const [cursor, setCursor] = useState(0);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState<Record<string, string>>({});
+  // --- État du composant (mémoire qui déclenche un ré-affichage quand elle change) ---
+  const [filterCat, setFilterCat] = useState("social"); // catégorie filtrée actuellement
+  const [items, setItems] = useState<Association[]>([]); // les assos chargées
+  const [cursor, setCursor] = useState(0); // index de l'asso affichée
+  const [total, setTotal] = useState(0); // nombre total d'assos pour ce filtre
+  const [page, setPage] = useState(1); // page de résultats déjà demandée à l'API
+  const [saving, setSaving] = useState(false); // true pendant l'enregistrement
+  const [saved, setSaved] = useState<Record<string, string>>({}); // assos modifiées : id -> nouvelle catégorie
 
-  const asso = items[cursor] ?? null;
+  const asso = items[cursor] ?? null; // l'asso en cours de revue (ou null)
 
+  // Charge une page d'assos depuis l'API. Page 1 = on remplace, sinon on ajoute à la suite.
+  // useCallback : garde la même fonction entre les rendus (évite des rechargements inutiles).
   const load = useCallback((cat: string, pg: number) => {
     api
       .list({ category: cat || undefined, limit: 50, page: pg })
@@ -26,6 +36,8 @@ export function AdminReview({ onClose }: { onClose: () => void }) {
       .catch(() => {});
   }, []);
 
+  // Quand on change de filtre : on repart de zéro et on recharge la 1ère page.
+  // (useEffect = code qui se relance quand une de ses dépendances change.)
   useEffect(() => {
     setCursor(0);
     setItems([]);
@@ -33,6 +45,8 @@ export function AdminReview({ onClose }: { onClose: () => void }) {
     load(filterCat, 1);
   }, [filterCat, load]);
 
+  // Chargement "à l'avance" : dès qu'on approche de la fin de la liste chargée
+  // (moins de 8 assos restantes) et qu'il en reste à récupérer, on demande la page suivante.
   useEffect(() => {
     if (items.length > 0 && cursor >= items.length - 8 && items.length < total) {
       const nextPage = page + 1;
@@ -41,9 +55,11 @@ export function AdminReview({ onClose }: { onClose: () => void }) {
     }
   }, [cursor, items.length, total, filterCat, page, load]);
 
+  // Valide une catégorie pour l'asso courante puis passe à la suivante.
+  // Si la catégorie choisie est différente de l'actuelle, on l'enregistre via l'API.
   const pick = useCallback(
     async (newCatId: string) => {
-      if (!asso || saving) return;
+      if (!asso || saving) return; // rien à faire si pas d'asso ou enregistrement en cours
       if (newCatId !== asso.categoryId) {
         setSaving(true);
         try {
@@ -60,8 +76,12 @@ export function AdminReview({ onClose }: { onClose: () => void }) {
     [asso, saving],
   );
 
+  // Raccourcis clavier pour aller vite :
+  // → ou Entrée = garder & suivant, ← = précédent, Échap = fermer,
+  // chiffres 1-9 = choisir directement la catégorie correspondante.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // On ignore les raccourcis si l'utilisateur est en train de taper dans un champ.
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       if (e.key === "ArrowRight" || e.key === "Enter") {
         e.preventDefault();
@@ -83,6 +103,7 @@ export function AdminReview({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener("keydown", handler);
   }, [asso, pick, onClose]);
 
+  // Catégorie à afficher : la version déjà modifiée si elle existe, sinon celle d'origine.
   const currentCatId = asso ? (saved[asso.id] ?? asso.categoryId) : null;
   const currentCat = currentCatId ? catById(currentCatId) : null;
 

@@ -1,3 +1,9 @@
+/**
+ * Liste des catégories d'associations (Écologie, Culture, Sport...).
+ * Chaque catégorie a sa couleur et son emoji, utilisés pour colorer les
+ * points sur la carte et les pastilles/filtres. Cette liste doit rester
+ * identique à celle du backend (le serveur), d'où l'import partagé.
+ */
 import type { Category } from "@gemenskarte/shared";
 
 /** Catégories "confetti" — alignées sur le backend (@gemenskarte/shared). */
@@ -11,8 +17,15 @@ export const CATEGORIES: Category[] = [
   { id: "patri",  label: "Patrimoine", emoji: "🏛️", color: "#9c6e3c", colorSoft: "#F5EDE0", onLight: false },
 ];
 
+// Petit "annuaire" : on transforme la liste en table id -> catégorie
+// pour retrouver une catégorie instantanément sans parcourir tout le tableau.
 const BY_ID: Record<string, Category> = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]));
 
+/**
+ * Retrouve une catégorie à partir de son identifiant.
+ * Si l'id est manquant ou inconnu, on renvoie la première catégorie
+ * par défaut (jamais de "trou" : on a toujours une catégorie valide).
+ */
 export function catById(id: string | null | undefined): Category {
   return (id && BY_ID[id]) || CATEGORIES[0];
 }

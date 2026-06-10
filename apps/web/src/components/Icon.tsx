@@ -1,10 +1,18 @@
+/**
+ * Icon : petit composant qui affiche une icône (loupe, épingle, flèche…) au
+ * format SVG. Toutes les icônes sont définies au même endroit ici, on les
+ * appelle simplement par leur nom : <Icon name="search" />.
+ * Pratique pour garder un style cohérent dans toute l'app.
+ */
 import type { ReactNode } from "react";
 
+// Liste des noms d'icônes autorisés (sécurité : on ne peut demander que ceux-là).
 export type IconName =
   | "search" | "pin" | "arrow" | "arrowUpRight" | "close" | "users" | "mail"
   | "phone" | "globe" | "insta" | "facebook" | "heart" | "sparkle" | "calendar"
   | "layers" | "list" | "check" | "chevron" | "map" | "square" | "shield";
 
+// Pour chaque nom d'icône, le dessin SVG correspondant (les traits qui la composent).
 const PATHS: Record<IconName, ReactNode> = {
   search: <><circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" /></>,
   pin: <><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z" /><circle cx="12" cy="10" r="2.5" /></>,
@@ -29,6 +37,8 @@ const PATHS: Record<IconName, ReactNode> = {
   shield: <><path d="M12 3 5 6v5c0 4.3 3 7.4 7 9 4-1.6 7-4.7 7-9V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></>,
 };
 
+// Affiche l'icône demandée. On peut régler sa taille (size) et l'épaisseur du
+// trait (stroke). La couleur suit automatiquement celle du texte ("currentColor").
 export function Icon({ name, size = 18, stroke = 2 }: { name: IconName; size?: number; stroke?: number }) {
   return (
     <svg

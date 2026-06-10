@@ -1,3 +1,10 @@
+/**
+ * ContactModal : la fenêtre pop-up (modale) où l'internaute peut soit demander
+ * à AJOUTER son association à la carte ("recenser"), soit SIGNALER une asso à
+ * retirer ("deferencer"). Les deux onglets partagent la même fenêtre.
+ * À l'envoi, le formulaire appelle l'API (le serveur) puis affiche un message
+ * de succès ou d'erreur.
+ */
 import { useState } from "react";
 import { api } from "../lib/api";
 import { CATEGORIES } from "../lib/categories";
@@ -18,7 +25,9 @@ interface Props {
 }
 
 export function ContactModal({ mode: initialMode, onClose }: Props) {
+  // mode = onglet actif ("recenser" ou "deferencer").
   const [mode, setMode] = useState<Mode>(initialMode);
+  // status = état d'avancement de l'envoi : rien / en cours / réussi / erreur.
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "err">("idle");
 
   // Champs recenser
@@ -36,8 +45,10 @@ export function ContactModal({ mode: initialMode, onClose }: Props) {
   const [dMsg, setDMsg]       = useState("");
   const [dEmail, setDEmail]   = useState("");
 
+  // Envoi du formulaire : on choisit le bon appel API selon l'onglet, et on met
+  // à jour le status (sending -> ok ou err) pour afficher le bon écran.
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // empêche le rechargement de page par défaut du navigateur
     setStatus("sending");
     try {
       if (mode === "recenser") {
@@ -51,6 +62,8 @@ export function ContactModal({ mode: initialMode, onClose }: Props) {
     }
   };
 
+  // Styles réutilisés pour tous les champs/labels du formulaire (évite de les
+  // réécrire à chaque <input>). Ce sont juste des objets de style CSS.
   const inp: React.CSSProperties = {
     width: "100%", height: 44, padding: "0 14px",
     borderRadius: 12, border: "1.5px solid var(--hairline)",
@@ -70,6 +83,8 @@ export function ContactModal({ mode: initialMode, onClose }: Props) {
   };
 
   return (
+    // Fond sombre qui couvre tout l'écran. Cliquer EN DEHORS de la fenêtre
+    // (sur le fond) ferme la modale ; un clic sur la fenêtre elle-même non.
     <div
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       style={{
@@ -120,7 +135,8 @@ export function ContactModal({ mode: initialMode, onClose }: Props) {
           </div>
         </div>
 
-        {/* Body */}
+        {/* Corps de la modale. Ce qu'on affiche dépend du status : écran de
+            succès, écran d'erreur, ou bien le formulaire (recenser/deferencer). */}
         <div style={{ overflowY: "auto", padding: "0 26px 26px", flex: 1 }}>
           {status === "ok" ? (
             <div style={{ textAlign: "center", padding: "40px 20px" }}>

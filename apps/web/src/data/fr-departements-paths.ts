@@ -1,6 +1,11 @@
 // Tracés SVG des départements français — extraits de Wikimedia Commons
 // « Départements de France-simple.svg » (open data). ViewBox 907×1000.
 // Généré automatiquement, ne pas éditer à la main.
+//
+// À quoi ça sert : chaque entrée associe un code de département (ex "44")
+// à son contour dessiné en SVG (le "path", une chaîne de coordonnées).
+// La carte s'en sert pour afficher la forme de chaque département.
+// FR_VIEWBOX = la "fenêtre" de dessin (largeur/hauteur de référence du SVG).
 
 export const FR_VIEWBOX = "0 0 907 1000";
 

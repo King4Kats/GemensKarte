@@ -1,4 +1,11 @@
-/** Départements → régions couvertes par GemensKarte. */
+// Petits outils pour situer une association : à partir d'un code postal on retrouve
+// le département, et à partir du département on retrouve la région. Sert aussi à vérifier
+// qu'une association est bien dans la zone géographique couverte par GemensKarte (l'Ouest).
+
+/**
+ * Table de correspondance : numéro de département (ex: "44") → nom de région.
+ * Seuls les départements de l'Ouest gérés par l'app sont listés ici.
+ */
 const DEPT_TO_REGION: Record<string, string> = {
   // Bretagne
   "22": "Bretagne", "29": "Bretagne", "35": "Bretagne", "56": "Bretagne",
@@ -10,14 +17,17 @@ const DEPT_TO_REGION: Record<string, string> = {
   "61": "Normandie", "76": "Normandie",
 };
 
+/** Renvoie le nom de région d'un département, ou null si on ne le couvre pas. */
 export function regionFromDepartment(dept: string | null | undefined): string | null {
   if (!dept) return null;
   return DEPT_TO_REGION[dept] ?? null;
 }
 
+/** Déduit le département (2 premiers chiffres) à partir d'un code postal à 5 chiffres. */
 export function departmentFromPostalCode(postalCode: string | null | undefined): string | null {
   if (!postalCode) return null;
   const code = postalCode.trim();
+  // On vérifie que le code postal est bien composé de 5 chiffres avant de le découper.
   if (!/^\d{5}$/.test(code)) return null;
   // Corse (2A/2B) non couverte ici, on reste sur 2 chiffres.
   return code.slice(0, 2);
