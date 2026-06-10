@@ -384,3 +384,9 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Mobile : empêche un éventuel défilement horizontal parasite (un élément qui
+   dépasse de quelques pixels). N'altère pas le design, juste l'anti-débordement. */
+@media (max-width: 760px) {
+  html, body { overflow-x: hidden; }
+}

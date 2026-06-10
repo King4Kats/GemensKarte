@@ -223,7 +223,7 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   // puis la barre de filtres, puis la carte qui occupe tout le reste de la place.
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 18, padding: "14px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, position: "relative", zIndex: 1200, background: "var(--bg)" }}>
+      <header style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px 14px", padding: "12px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, position: "relative", zIndex: 1200, background: "var(--bg)" }}>
         <Logo size={20} onClick={onHome} />
         {dept && (
           <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 11px",
