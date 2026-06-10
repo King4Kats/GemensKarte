@@ -1,77 +1,20 @@
 /**
  * Composant racine du front (l'application React affichée dans le navigateur).
- * Il décide quel écran montrer : la page d'accueil (Landing) ou la carte (MapView),
- * et il gère l'ouverture des écrans d'administration cachés (revue des liens / des catégories),
- * accessibles via un raccourci clavier ou une adresse spéciale (le #hash dans l'URL).
+ * Il décide quel écran montrer : la page d'accueil (Landing) ou la carte (MapView).
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Landing } from "./screens/Landing";
-import { AdminReview } from "./components/AdminReview";
-import { LinkReview } from "./components/LinkReview";
 import { MapView } from "./screens/MapView";
 import type { DeptMeta } from "./data/departements";
-import { adminAuth } from "./lib/api";
-
-/** Retire le #hash sans recharger ni empiler d'historique. */
-function clearHash() {
-  if (window.location.hash) {
-    history.replaceState(null, "", window.location.pathname + window.location.search);
-  }
-}
-
-/**
- * Avant d'ouvrir un panneau d'admin, on s'assure d'avoir un jeton : s'il manque,
- * on le demande une fois (puis il est mémorisé dans le navigateur). Renvoie false
- * si l'utilisateur annule -> on n'ouvre pas le panneau.
- */
-function ensureAdminToken(): boolean {
-  if (adminAuth.has()) return true;
-  const t = window.prompt("Jeton d'administration :");
-  if (t && t.trim()) { adminAuth.set(t); return true; }
-  return false;
-}
 
 export function App() {
   // useState = une "case mémoire" de React : quand sa valeur change, l'écran se redessine.
-  // screen : quel écran on affiche ; dept : le département choisi ; admin/links : panneaux d'admin ouverts ou non.
+  // screen : quel écran on affiche ; dept : le département choisi.
   const [screen, setScreen] = useState<"landing" | "map">("landing");
   const [dept, setDept] = useState<DeptMeta | null>(null);
-  const [admin, setAdmin] = useState(false);
-  const [links, setLinks] = useState(false);
-
-  // useEffect avec [] = ce code s'exécute une seule fois, au démarrage de l'app.
-  // On y branche l'écoute du clavier et des changements d'URL ; on les débranche à la fermeture.
-  useEffect(() => {
-    // Raccourcis clavier cachés pour ouvrir/fermer les panneaux d'admin (Ctrl+Shift+A et Ctrl+Shift+L).
-    // À l'ouverture, on exige le jeton admin (ensureAdminToken) ; à la fermeture, non.
-    const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === "A") { if (admin || ensureAdminToken()) setAdmin((v) => !v); }
-      if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) { if (links || ensureAdminToken()) setLinks((v) => !v); }
-    };
-    window.addEventListener("keydown", handler);
-    // Accès admin par URL (bookmarkable) : /#review = revue des liens en quarantaine,
-    // /#categories = revue des catégories. Marche au chargement ET au changement de hash.
-    const fromHash = () => {
-      const h = window.location.hash.toLowerCase();
-      const wantLinks = h === "#review" || h === "#quarantaine" || h === "#admin";
-      const wantAdmin = h === "#categories";
-      // Ouverture via URL : on demande aussi le jeton, sinon on n'ouvre rien.
-      if ((wantLinks || wantAdmin) && !ensureAdminToken()) { setLinks(false); setAdmin(false); return; }
-      setLinks(wantLinks);
-      setAdmin(wantAdmin);
-    };
-    fromHash();
-    window.addEventListener("hashchange", fromHash);
-    return () => {
-      window.removeEventListener("keydown", handler);
-      window.removeEventListener("hashchange", fromHash);
-    };
-  }, [admin, links]);
 
   return (
     <>
-      {admin && <AdminReview onClose={() => { setAdmin(false); clearHash(); }} />}
-      {links && <LinkReview onClose={() => { setLinks(false); clearHash(); }} />}
       {screen === "landing" && (
         <Landing onSelect={(d) => { setDept(d); setScreen("map"); }} />
       )}
