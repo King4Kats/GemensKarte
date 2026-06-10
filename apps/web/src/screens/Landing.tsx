@@ -5,7 +5,7 @@ import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
-import type { DeptMeta } from "../data/departements";
+import { REGION_COLOR, type DeptMeta } from "../data/departements";
 
 export interface ExploreOpts {
   q?: string;
@@ -159,11 +159,11 @@ export function Landing({ onExplore, onPortal, dept }: {
             opacity: 0, animation: "cmSlideUp .5s cubic-bezier(.22,1,.36,1) .1s forwards",
           }}>
             <span style={{ display: "inline-flex", gap: 4 }}>
-              {(["#ff2d78", "#00d68f", "#2b59ff"] as const).map((c, i) => (
+              {(dept ? [REGION_COLOR[dept.region]] : ["#ff2d78", "#00d68f", "#2b59ff"]).map((c, i) => (
                 <i key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: c, animation: `cmPulse 2.4s ease ${i * 0.4}s infinite` }} />
               ))}
             </span>
-            Bretagne · Pays de la Loire · Normandie
+            {dept ? `${dept.nom} · ${dept.region}` : "Bretagne · Pays de la Loire · Normandie"}
           </span>
 
           {/* H1 */}
@@ -263,7 +263,7 @@ export function Landing({ onExplore, onPortal, dept }: {
         <div style={{ flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 16 }}>
           {[
             { emoji: "📍", label: "18 554 associations référencées" },
-            { emoji: "🗺️", label: "Bretagne, Pays de la Loire, Normandie" },
+            { emoji: "🗺️", label: dept ? `${dept.nom} · ${dept.region}` : "Bretagne, Pays de la Loire, Normandie" },
             { emoji: "🔍", label: "Recherche par type, ville, distance" },
             { emoji: "🤝", label: "Entièrement bénévole & open-source" },
           ].map((it) => (
