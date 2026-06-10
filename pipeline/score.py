@@ -78,6 +78,9 @@ def compute(asso: dict, now: datetime) -> dict:
     has_website = bool(website or social.get("website"))
     has_social = any(social.get(k) for k in SOCIAL_KEYS)
     has_ha = bool(social.get("helloasso"))
+    # A-t-elle au moins UN lien ? Sert à ne pas créditer une fiche totalement vide pour
+    # de la "vérif faite" / "pas de lien mort" / "fraîcheur" — sinon elle monte à tort.
+    has_any_link = has_website or has_social or has_ha
 
     # --- COVERAGE
     if has_website:
@@ -94,10 +97,14 @@ def compute(asso: dict, now: datetime) -> dict:
         flags.append("no_helloasso")
 
     # --- VERIFICATION
+    # On ne crédite la vérification QUE si la fiche a au moins un lien : "vérifié mais tout
+    # droppé" (fiche vide) ne doit pas rapporter de points de qualité.
     if ver_model:
-        pts += W["verif_model"]
+        if has_any_link:
+            pts += W["verif_model"]
     elif ver:
-        pts += W["verif_model"] * 0.45
+        if has_any_link:
+            pts += W["verif_model"] * 0.45
         flags.append("verif_legacy")
     else:
         flags.append("verif_missing")
@@ -120,10 +127,15 @@ def compute(asso: dict, now: datetime) -> dict:
             pts += W["health_clean"]
         if all_alive:
             pts += W["health_allalive"]
-    else:
-        # pas encore checké : neutre (moitié des points santé) pour ne pas punir l'attente
+    elif has_website or has_ha:
+        # liens servables existants mais pas encore checkés : neutre (moitié) pour ne pas
+        # punir l'attente de liveness.
         pts += (W["health_clean"] + W["health_allalive"]) * 0.5
         flags.append("health_unchecked")
+    else:
+        # aucun lien testable -> 0 point santé (ne pas créditer une fiche vide de
+        # "pas de lien mort" : elle n'a simplement aucun lien).
+        flags.append("no_link")
     if asso["quarantine"] and asso["quarantine"] != {}:
         flags.append("has_quarantine")
 
@@ -131,8 +143,10 @@ def compute(asso: dict, now: datetime) -> dict:
     age_verif = _age_days(ver.get("ts"), now)
     age_health = _age_days(asso["linkHealthAt"], now)
     age_press = _age_days(asso["pressScrapedAt"], now)
-    pts += W["fresh_verif"] * _decay(age_verif, 90, 365)
-    pts += W["fresh_health"] * _decay(age_health, 21, 90)
+    # Fraîcheur vérif/santé : seulement si la fiche a des liens (rien à "rafraîchir" sinon).
+    if has_any_link:
+        pts += W["fresh_verif"] * _decay(age_verif, 90, 365)
+        pts += W["fresh_health"] * _decay(age_health, 21, 90)
     pts += W["fresh_press"] * _decay(age_press, 60, 365)
     if asso["pressCount"] and asso["pressCount"] > 0:
         pts += W["has_press"]
