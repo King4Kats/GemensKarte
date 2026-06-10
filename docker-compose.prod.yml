@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: gemenskarte
-      POSTGRES_PASSWORD: gemenskarte
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: gemenskarte
     volumes:
       - db_data:/var/lib/postgresql/data
@@ -23,7 +23,7 @@ services:
     container_name: gk-search
     restart: unless-stopped
     environment:
-      MEILI_MASTER_KEY: devMasterKeyChangeMe
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       MEILI_ENV: production
     volumes:
       - meili_data:/meili_data
@@ -37,10 +37,10 @@ services:
     environment:
       NODE_ENV: production
       PORT: "3000"
-      CORS_ORIGIN: "*"
-      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      DATABASE_URL: ${DATABASE_URL}
       MEILI_HOST: http://meilisearch:7700
-      MEILI_MASTER_KEY: devMasterKeyChangeMe
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY}
       BAN_GEOCODER_URL: https://api-adresse.data.gouv.fr
       # Jeton admin lu depuis le fichier .env (gitignoré). Vide -> routes admin fermées.
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
@@ -68,7 +68,7 @@ services:
     container_name: gk-enrich
     restart: on-failure
     environment:
-      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+      DATABASE_URL: ${DATABASE_URL}
     depends_on:
       db:
         condition: service_healthy
@@ -81,7 +81,7 @@ services:
     restart: no
     profiles: [scrape]
     environment:
-      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+      DATABASE_URL: ${DATABASE_URL}
     command: python -u scrape_mairie.py --sleep 2.0
     volumes:
       - ./tools/enrichment:/output
@@ -97,7 +97,7 @@ services:
     restart: "no"
     profiles: [press]
     environment:
-      DATABASE_URL: postgres://gemenskarte:gemenskarte@db:5432/gemenskarte
+      DATABASE_URL: ${DATABASE_URL}
     command: python -u enrich_press.py --sleep 2.0
     depends_on:
       db:
