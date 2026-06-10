@@ -3,5 +3,6 @@
 psycopg[binary]      # client PostgreSQL
 ddgs                 # recherche DuckDuckGo
 httpx                # requêtes HTTP (test de liens, fetch de pages, API OpenAgenda)
-readability-lxml     # extrait le texte principal d'une page web (pour le jugement LLM)
+trafilatura>=2.0     # extraction du texte principal d'une page (nettoyage du boilerplate)
+readability-lxml     # repli d'extraction + titre court de la page
 ollama               # client du LLM local (Ollama) tournant sur le GPU

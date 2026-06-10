@@ -31,7 +31,14 @@ function Ensure-Ollama {
   Start-Sleep -Seconds 8
 }
 
+# On garde une réf vers le process Windows de chaque tunnel pour pouvoir le tuer/relancer.
+$script:Tunnels = @{}
 function Start-Tunnel($port) {
+  # Tue l'ancien tunnel de CE port s'il traîne (process mort/zombie), sans toucher l'autre.
+  $old = $script:Tunnels[$port]
+  if ($old -and -not $old.HasExited) { Stop-Process -Id $old.Id -Force -ErrorAction SilentlyContinue }
+  wsl -e bash -lc "pkill -f 'ssh -N.*0.0.0.0:${port}:' 2>/dev/null" 2>$null
+
   # Résout l'IP du conteneur gk-db (peut changer après reboot des conteneurs).
   # NB: `hostname -i` (pas de template Go {{...}}) survit au quoting wsl->ssh->bash.
   $ip = ''
@@ -41,13 +48,14 @@ function Start-Tunnel($port) {
   } catch {}
   if ($ip -notmatch '^\d{1,3}(\.\d{1,3}){3}$') { $ip = '172.24.0.3' }
   Log "tunnel ${port}: (re)demarrage vers ${ip}:5432"
-  # Lance ssh DANS wsl en nohup+disown : un Start-Process détaché tue la session WSL et le
-  # tunnel meurt aussitôt. pkill ciblé sur CE port évite doublons sans tuer l'autre tunnel.
-  $cmd = "pkill -f 'ssh -N.*0.0.0.0:${port}:' 2>/dev/null; sleep 1; " +
-         "nohup ssh -N -o ServerAliveInterval=30 -o ServerAliveCountMax=3 " +
-         "-o ExitOnForwardFailure=yes -L 0.0.0.0:${port}:${ip}:5432 noob-serveur " +
-         ">/tmp/gktun${port}.log 2>&1 & disown"
-  wsl -e bash -lc $cmd
+
+  # ssh EN AVANT-PLAN dans un process Windows persistant (fenêtre cachée). nohup+disown dans
+  # `wsl -e bash -lc` ne survit PAS : WSL tue les process de la session qui se termine, donc le
+  # tunnel meurt à chaque cycle. Un Start-Process garde le ssh vivant tant qu'il tourne ; quand
+  # il tombe (réseau), Test-Port le détecte et on relance.
+  $script:Tunnels[$port] = Start-Process -WindowStyle Hidden -PassThru wsl -ArgumentList `
+    '-e', 'ssh', '-N', '-o', 'ServerAliveInterval=30', '-o', 'ServerAliveCountMax=3', `
+    '-o', 'ExitOnForwardFailure=yes', '-L', "0.0.0.0:${port}:${ip}:5432", 'noob-serveur'
   Start-Sleep -Seconds 6
 }
 
