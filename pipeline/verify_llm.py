@@ -2,7 +2,7 @@
 
 Pour chaque asso ayant un meta.discovery, juge chaque candidat :
   - réseaux sociaux (FB/IG/LI/TikTok/Twitter) : Ollama juge titre+snippet+slug (pages bloquées) ;
-  - site web : httpx récupère la page -> readability extrait le texte -> Ollama juge le contenu réel ;
+  - site web : httpx récupère la page -> Trafilatura extrait le texte (repli readability) -> Ollama juge ;
   - HelloAsso : AUTO-FIABLE (plateforme à slug vérifié), pas d'appel LLM.
 
 Sortie par candidat : {url, confidence 0-1, verdict: keep|quarantine|drop, reason}.
@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 import httpx
 import psycopg
 from ollama import Client
+import trafilatura
 from readability import Document
 
 DSN = os.environ.get(
@@ -101,7 +102,12 @@ def judge_social(client, model, asso, cand) -> dict:
 
 
 def fetch_text(url: str) -> tuple[str | None, str | None]:
-    """Retourne (texte, erreur). texte tronqué à ~4000 chars."""
+    """Retourne (texte, erreur). texte tronqué à ~4000 chars.
+
+    Extraction principale via Trafilatura : il vire bien mieux le boilerplate
+    (menus, pubs, pieds de page) que readability -> texte plus propre = meilleur
+    jugement du LLM. readability sert de repli (si Trafilatura ne sort rien) et
+    fournit le titre court."""
     try:
         with httpx.Client(follow_redirects=True, timeout=8.0,
                           headers={"User-Agent": UA}) as c:
@@ -110,8 +116,15 @@ def fetch_text(url: str) -> tuple[str | None, str | None]:
             ctype = r.headers.get("content-type", "")
             if "html" not in ctype and "text" not in ctype:
                 return None, f"non-html ({ctype})"
-            doc = Document(r.text)
-            body = _WS.sub(" ", _TAGS.sub(" ", doc.summary())).strip()
+            html = r.text
+            # 1) Trafilatura renvoie déjà du texte nettoyé (pas de HTML à re-stripper).
+            body = trafilatura.extract(
+                html, include_comments=False, include_tables=False, favor_recall=True,
+            ) or ""
+            doc = Document(html)  # pour le titre, et repli si Trafilatura est vide
+            if not body:
+                body = _TAGS.sub(" ", doc.summary())
+            body = _WS.sub(" ", body).strip()
             head = f"{doc.short_title()} — " if doc.short_title() else ""
             text = (head + body)[:4000]
             return (text or None), (None if text else "page vide")
