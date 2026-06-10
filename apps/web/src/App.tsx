@@ -10,12 +10,25 @@ import { AdminReview } from "./components/AdminReview";
 import { LinkReview } from "./components/LinkReview";
 import { MapView } from "./screens/MapView";
 import type { DeptMeta } from "./data/departements";
+import { adminAuth } from "./lib/api";
 
 /** Retire le #hash sans recharger ni empiler d'historique. */
 function clearHash() {
   if (window.location.hash) {
     history.replaceState(null, "", window.location.pathname + window.location.search);
   }
+}
+
+/**
+ * Avant d'ouvrir un panneau d'admin, on s'assure d'avoir un jeton : s'il manque,
+ * on le demande une fois (puis il est mémorisé dans le navigateur). Renvoie false
+ * si l'utilisateur annule -> on n'ouvre pas le panneau.
+ */
+function ensureAdminToken(): boolean {
+  if (adminAuth.has()) return true;
+  const t = window.prompt("Jeton d'administration :");
+  if (t && t.trim()) { adminAuth.set(t); return true; }
+  return false;
 }
 
 export function App() {
@@ -30,17 +43,22 @@ export function App() {
   // On y branche l'écoute du clavier et des changements d'URL ; on les débranche à la fermeture.
   useEffect(() => {
     // Raccourcis clavier cachés pour ouvrir/fermer les panneaux d'admin (Ctrl+Shift+A et Ctrl+Shift+L).
+    // À l'ouverture, on exige le jeton admin (ensureAdminToken) ; à la fermeture, non.
     const handler = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === "A") setAdmin((v) => !v);
-      if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) setLinks((v) => !v);
+      if (e.ctrlKey && e.shiftKey && e.key === "A") { if (admin || ensureAdminToken()) setAdmin((v) => !v); }
+      if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) { if (links || ensureAdminToken()) setLinks((v) => !v); }
     };
     window.addEventListener("keydown", handler);
     // Accès admin par URL (bookmarkable) : /#review = revue des liens en quarantaine,
     // /#categories = revue des catégories. Marche au chargement ET au changement de hash.
     const fromHash = () => {
       const h = window.location.hash.toLowerCase();
-      setLinks(h === "#review" || h === "#quarantaine" || h === "#admin");
-      setAdmin(h === "#categories");
+      const wantLinks = h === "#review" || h === "#quarantaine" || h === "#admin";
+      const wantAdmin = h === "#categories";
+      // Ouverture via URL : on demande aussi le jeton, sinon on n'ouvre rien.
+      if ((wantLinks || wantAdmin) && !ensureAdminToken()) { setLinks(false); setAdmin(false); return; }
+      setLinks(wantLinks);
+      setAdmin(wantAdmin);
     };
     fromHash();
     window.addEventListener("hashchange", fromHash);
@@ -48,7 +66,7 @@ export function App() {
       window.removeEventListener("keydown", handler);
       window.removeEventListener("hashchange", fromHash);
     };
-  }, []);
+  }, [admin, links]);
 
   return (
     <>
