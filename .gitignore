@@ -30,3 +30,7 @@ pipeline/_*.txt
 pipeline/*.bak
 __pycache__/
 *.pyc
+
+# secret local du pipeline (mot de passe DB)
+.dbpass
+pipeline/.dbpass
