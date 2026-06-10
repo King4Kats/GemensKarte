@@ -175,7 +175,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           }}>
             Le territoire<br />
             <span style={{ position: "relative", color: "var(--accent)", whiteSpace: "nowrap" }}>
-              associatif
+              des assos
               <svg viewBox="0 0 240 18" preserveAspectRatio="none" style={{ position: "absolute", left: 0, right: 0, bottom: "-0.12em", width: "100%", height: "0.22em", overflow: "visible" }}>
                 <path d="M3 13 C 60 4, 180 4, 237 11" fill="none" stroke="var(--accent)" strokeWidth="5" strokeLinecap="round"
                   pathLength="1" strokeDasharray="1" strokeDashoffset="1"

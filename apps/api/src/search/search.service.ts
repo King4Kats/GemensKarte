@@ -113,12 +113,13 @@ export class SearchService implements OnModuleInit {
   }
 
   /** Autocomplétion : renvoie des suggestions légères pour la barre de recherche. */
-  async suggest(q: string, limit: number): Promise<Suggestion[]> {
+  async suggest(q: string, limit: number, department?: string): Promise<Suggestion[]> {
     if (!this.available) return [];
     try {
       const res = await this.index.search(q, {
         limit,
         attributesToRetrieve: ["id", "name", "categoryId", "city"],
+        ...(department ? { filter: `department = "${department}"` } : {}),
       });
       return res.hits.map((h) => ({
         id: h.id,
