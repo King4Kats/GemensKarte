@@ -11,8 +11,12 @@ $ErrorActionPreference = 'Continue'
 $dir = 'C:\Users\flavi\Documents\gemenskarte-enrich'
 Set-Location $dir
 $py  = "$dir\.venv\Scripts\python.exe"
-$DSN_A = 'postgres://gemenskarte:gemenskarte@localhost:5433/gemenskarte'  # léger
-$DSN_B = 'postgres://gemenskarte:gemenskarte@localhost:5434/gemenskarte'  # lourd + périodique
+# Mot de passe de la base lu depuis un fichier local NON versionné (.dbpass), jamais
+# écrit en clair dans le code ni dans le dépôt. Repli sur l'ancien défaut si absent.
+$dbPassFile = "$dir\.dbpass"
+$dbPass = if (Test-Path $dbPassFile) { (Get-Content $dbPassFile -Raw).Trim() } else { 'gemenskarte' }
+$DSN_A = "postgres://gemenskarte:$dbPass@localhost:5433/gemenskarte"  # léger
+$DSN_B = "postgres://gemenskarte:$dbPass@localhost:5434/gemenskarte"  # lourd + périodique
 $env:DATABASE_URL = $DSN_B
 $log = "$dir\_supervisor.log"
 function Log($m) { "$(Get-Date -Format o)  $m" | Out-File -Append -Encoding utf8 $log }
