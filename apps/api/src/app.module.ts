@@ -1,3 +1,9 @@
+/**
+ * Module racine de l'API NestJS.
+ * Il assemble tous les "modules" (briques de l'app : base de données, géo,
+ * recherche, associations, etc.) et déclare le contrôleur de santé (health check,
+ * une URL qui répond "je suis vivant" pour la surveillance).
+ */
 import { Module } from "@nestjs/common";
 import { AssociationsModule } from "./associations/associations.module";
 import { CategoriesModule } from "./categories/categories.module";

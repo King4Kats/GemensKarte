@@ -1,3 +1,9 @@
+/**
+ * Composant racine du front (l'application React affichée dans le navigateur).
+ * Il décide quel écran montrer : la page d'accueil (Landing) ou la carte (MapView),
+ * et il gère l'ouverture des écrans d'administration cachés (revue des liens / des catégories),
+ * accessibles via un raccourci clavier ou une adresse spéciale (le #hash dans l'URL).
+ */
 import { useEffect, useState } from "react";
 import { Landing } from "./screens/Landing";
 import { AdminReview } from "./components/AdminReview";
@@ -13,12 +19,17 @@ function clearHash() {
 }
 
 export function App() {
+  // useState = une "case mémoire" de React : quand sa valeur change, l'écran se redessine.
+  // screen : quel écran on affiche ; dept : le département choisi ; admin/links : panneaux d'admin ouverts ou non.
   const [screen, setScreen] = useState<"landing" | "map">("landing");
   const [dept, setDept] = useState<DeptMeta | null>(null);
   const [admin, setAdmin] = useState(false);
   const [links, setLinks] = useState(false);
 
+  // useEffect avec [] = ce code s'exécute une seule fois, au démarrage de l'app.
+  // On y branche l'écoute du clavier et des changements d'URL ; on les débranche à la fermeture.
   useEffect(() => {
+    // Raccourcis clavier cachés pour ouvrir/fermer les panneaux d'admin (Ctrl+Shift+A et Ctrl+Shift+L).
     const handler = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === "A") setAdmin((v) => !v);
       if (e.ctrlKey && e.shiftKey && (e.key === "L" || e.key === "l")) setLinks((v) => !v);

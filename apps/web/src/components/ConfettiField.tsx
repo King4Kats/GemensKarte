@@ -1,7 +1,15 @@
+/**
+ * ConfettiField : petit décor animé (des confettis qui flottent) affiché en
+ * arrière-plan de la page d'accueil. Les confettis bougent légèrement en
+ * fonction de la position de la souris (effet de profondeur "parallaxe").
+ * Purement décoratif : ne fait rien d'utile pour les données de l'app.
+ */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
+// Palette de couleurs piochée au hasard pour chaque confetti.
 const COLS = ["#00d68f", "#ff2d78", "#ffc300", "#2b59ff", "#ff5c35", "#7b3ff2"];
 
+// Décrit un confetti : sa position, sa taille, sa couleur, sa forme, etc.
 interface Particle {
   id: number;
   left: number;  // %
@@ -16,6 +24,11 @@ interface Particle {
   depth: number; // parallax factor 0.2–1.0
 }
 
+/**
+ * Générateur de nombres "au hasard" mais reproductible : avec la même graine
+ * (seed), on obtient toujours la même suite de nombres. Pratique pour que les
+ * confettis soient placés pareil à chaque rendu (et pas qui sautillent).
+ */
 function seededRng(seed: number) {
   let s = seed;
   return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
@@ -28,7 +41,8 @@ export function ConfettiField({ count = 28, seed = 11 }: { count?: number; seed?
   const targetRef = useRef({ x: 0.5, y: 0.5 });
   const currentRef = useRef({ x: 0.5, y: 0.5 });
 
-  // Smooth mouse tracking avec lerp
+  // On écoute la souris et on fait suivre les confettis EN DOUCEUR (on glisse
+  // petit à petit vers la position cible au lieu de sauter d'un coup).
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
       targetRef.current = {
@@ -38,6 +52,8 @@ export function ConfettiField({ count = 28, seed = 11 }: { count?: number; seed?
     };
     window.addEventListener("mousemove", onMove);
 
+    // Boucle d'animation (rejouée ~60 fois/seconde) : à chaque image on
+    // rapproche un peu la position actuelle de la cible (le "0.06" = vitesse).
     const tick = () => {
       const cur = currentRef.current;
       const tar = targetRef.current;
@@ -57,6 +73,8 @@ export function ConfettiField({ count = 28, seed = 11 }: { count?: number; seed?
     };
   }, []);
 
+  // On fabrique la liste des confettis UNE SEULE FOIS (useMemo = on mémorise le
+  // résultat et on ne recalcule que si count/seed change).
   const particles = useMemo<Particle[]>(() => {
     const rnd = seededRng(seed);
     return Array.from({ length: count }).map((_, i) => {
@@ -88,6 +106,8 @@ export function ConfettiField({ count = 28, seed = 11 }: { count?: number; seed?
       }}
     >
       {particles.map((p) => {
+        // Décalage du confetti selon la souris : plus son "depth" est grand,
+        // plus il bouge (impression que certains sont plus proches que d'autres).
         const px = (mouse.x - 0.5) * p.depth * -36;
         const py = (mouse.y - 0.5) * p.depth * -24;
 
@@ -108,6 +128,8 @@ export function ConfettiField({ count = 28, seed = 11 }: { count?: number; seed?
           transition: "translate 0.1s linear",
         };
 
+        // Selon la forme tirée au sort, on affiche un rond, un rectangle, un
+        // anneau ou un losange. Le rendu visuel change mais la logique est la même.
         if (p.kind === "dot") {
           return (
             <i

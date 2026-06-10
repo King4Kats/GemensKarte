@@ -1,3 +1,10 @@
+/**
+ * MapView : l'écran principal de la carte interactive.
+ * On affiche une carte Leaflet (librairie de cartes web) avec les associations
+ * d'un département, regroupées en "clusters" (paquets de points proches), plus
+ * une barre de recherche et des filtres par catégorie.
+ * Cliquer sur un point ouvre la fiche détaillée de l'association (AssoSheet).
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet.markercluster";
@@ -12,6 +19,9 @@ import { AssoSheet } from "../components/AssoSheet";
 import type { ExploreOpts } from "./Landing";
 import type { DeptMeta } from "../data/departements";
 
+// Barre de filtres : une pastille cliquable par catégorie. Cliquer active/désactive
+// le filtre. Un bouton "Tout afficher" apparait dès qu'au moins un filtre est actif.
+// (`active` = liste des id de catégories actuellement sélectionnées.)
 function FilterBar({ active, onToggle, onClear }: { active: string[]; onToggle: (id: string) => void; onClear: () => void }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "nowrap" }}>
@@ -45,21 +55,27 @@ function FilterBar({ active, onToggle, onClear }: { active: string[]; onToggle: 
   );
 }
 
+// Composant principal de l'écran carte.
+// - `initial` : options de départ (recherche, catégorie, asso à ouvrir) venant de la page d'accueil.
+// - `onHome` / `onPortal` : fonctions pour revenir à l'accueil ou à la liste des territoires.
+// - `dept` : le département affiché (sert à limiter les données à ce territoire).
 export function MapView({ initial, onHome, onPortal, dept }: {
   initial: ExploreOpts;
   onHome: () => void;
   onPortal?: () => void;
   dept?: DeptMeta | null;
 }) {
-  const [q, setQ] = useState(initial.q || "");
-  const [cats, setCats] = useState<string[]>(initial.cat ? [initial.cat] : []);
-  const [points, setPoints] = useState<GeoPoint[]>([]);
-  const [openAsso, setOpenAsso] = useState<Association | null>(null);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  // États React (données qui, quand elles changent, redessinent l'écran) :
+  const [q, setQ] = useState(initial.q || "");                                  // texte tapé dans la recherche
+  const [cats, setCats] = useState<string[]>(initial.cat ? [initial.cat] : []); // filtres catégories actifs
+  const [points, setPoints] = useState<GeoPoint[]>([]);                         // tous les points géographiques des assos
+  const [openAsso, setOpenAsso] = useState<Association | null>(null);           // asso dont la fiche est ouverte
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);             // propositions auto de la recherche
 
-  const mapRef = useRef<L.Map | null>(null);
-  const mapElRef = useRef<HTMLDivElement>(null);
-  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
+  // Références (valeurs gardées entre les rendus, sans redessiner l'écran) :
+  const mapRef = useRef<L.Map | null>(null);                                    // l'objet carte Leaflet
+  const mapElRef = useRef<HTMLDivElement>(null);                                // la balise HTML qui contient la carte
+  const clusterRef = useRef<L.MarkerClusterGroup | null>(null);                 // le groupe de marqueurs clusterisés
 
   /* ---- points carte (scopés au département du territoire) ---- */
   useEffect(() => {
@@ -67,18 +83,24 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   }, [dept?.code]);
 
 
+  // Déplace en douceur la carte vers une association (animation de "vol").
   const flyTo = useCallback((a: Association) => {
     const m = mapRef.current;
     if (m && a.lat != null && a.lng != null) m.flyTo([a.lat, a.lng], Math.max(m.getZoom(), 11), { duration: 0.7 });
   }, []);
 
+  // Ouvre la fiche d'une asso déjà chargée et recentre la carte dessus.
   const openAssoFn = useCallback((a: Association) => { setOpenAsso(a); flyTo(a); }, [flyTo]);
 
+  // Va chercher l'asso complète auprès de l'API à partir de son identifiant, puis l'ouvre.
   const openById = useCallback(async (id: string) => {
     try { const a = await api.get(id); openAssoFn(a); } catch { /* ignore */ }
   }, [openAssoFn]);
 
   /* ---- suggestions (Meili) ---- */
+  // À chaque frappe, on demande au moteur de recherche (Meilisearch) jusqu'à 6 propositions.
+  // Le setTimeout/clearTimeout fait un "debounce" (on attend 160 ms de pause avant d'envoyer)
+  // pour ne pas lancer une requête à chaque lettre tapée.
   useEffect(() => {
     const t = q.trim();
     if (!t) { setSuggestions([]); return; }
@@ -87,12 +109,17 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   }, [q, dept?.code]);
 
   /* ---- filtrage des points carte par categorie uniquement (pas par texte = freeze) ---- */
+  // On ne garde que les points dont la catégorie est cochée. Si aucun filtre, on garde tout.
+  // useMemo = on recalcule seulement quand `points` ou `cats` changent (évite des recalculs inutiles).
   const filteredPoints = useMemo(() => {
     if (cats.length === 0) return points;
     return points.filter((p) => cats.includes(p.categoryId));
   }, [points, cats]);
 
   /* ---- init Leaflet (une fois) ---- */
+  // Crée la carte au premier affichage : centre sur la Vendée, choisit le fond de carte
+  // OpenStreetMap France (les "tiles" = petites images qui composent la carte).
+  // Le `return () => map.remove()` nettoie la carte quand on quitte l'écran.
   useEffect(() => {
     if (mapRef.current || !mapElRef.current) return;
     const map = L.map(mapElRef.current, { center: [46.67, -1.43], zoom: 9, zoomControl: false, scrollWheelZoom: true });
@@ -106,10 +133,13 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   }, []);
 
   /* ---- (re)construit les marqueurs (clusterisés) quand les points filtrés changent ---- */
+  // À chaque changement de filtre, on vide puis recrée tous les marqueurs sur la carte.
+  // Les marqueurs proches sont regroupés en "clusters" (paquets) pour ne pas surcharger l'écran.
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
+    // On crée le groupe de clusters une seule fois (à la première exécution).
     if (!clusterRef.current) {
       clusterRef.current = L.markerClusterGroup({
         chunkedLoading: true,
@@ -117,12 +147,16 @@ export function MapView({ initial, onHome, onPortal, dept }: {
         maxClusterRadius: 56,
         spiderfyOnMaxZoom: true,
         // Pastille plate colorée par la catégorie DOMINANTE des assos du cluster.
+        // Dessine la pastille d'un cluster : on compte les catégories des assos qu'il contient
+        // et on le colore avec la catégorie la plus présente. La taille grandit avec le nombre.
         iconCreateFunction: (cluster) => {
+          // tally = compteur "catégorie -> nombre d'assos de cette catégorie dans le cluster".
           const tally: Record<string, number> = {};
           for (const m of cluster.getAllChildMarkers()) {
             const id = (m.options as { catId?: string }).catId;
             if (id) tally[id] = (tally[id] ?? 0) + 1;
           }
+          // On cherche la catégorie dominante (celle qui revient le plus souvent).
           let domId = "";
           let max = -1;
           for (const id in tally) {
@@ -143,8 +177,10 @@ export function MapView({ initial, onHome, onPortal, dept }: {
       map.addLayer(clusterRef.current);
     }
     const group = clusterRef.current;
-    group.clearLayers();
+    group.clearLayers(); // on enlève les anciens marqueurs avant de remettre les nouveaux
 
+    // Pour chaque point, on fabrique un marqueur coloré selon sa catégorie,
+    // avec une mini-fiche (popup) au survol et l'ouverture de la fiche au clic.
     const markers = filteredPoints.map((p) => {
       const c = catById(p.categoryId);
       const icon = L.divIcon({
@@ -171,6 +207,8 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   }, [filteredPoints, openById]);
 
   /* ---- ouverture initiale (depuis la landing) ---- */
+  // Si la page d'accueil a demandé d'ouvrir une asso précise, on le fait une seule fois,
+  // une fois les points chargés. `didInitOpen` empêche de recommencer aux rendus suivants.
   const didInitOpen = useRef(false);
   useEffect(() => {
     if (didInitOpen.current || !initial.open || points.length === 0) return;
@@ -178,8 +216,11 @@ export function MapView({ initial, onHome, onPortal, dept }: {
     void openById(initial.open);
   }, [initial.open, points, openById]);
 
+  // Active/désactive un filtre catégorie : on le retire s'il y est déjà, sinon on l'ajoute.
   const toggleCat = (id: string) => setCats((cs) => (cs.includes(id) ? cs.filter((x) => x !== id) : [...cs, id]));
 
+  // Affichage de l'écran : en haut l'en-tête (logo, recherche, boutons),
+  // puis la barre de filtres, puis la carte qui occupe tout le reste de la place.
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
       <header style={{ display: "flex", alignItems: "center", gap: 18, padding: "14px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, position: "relative", zIndex: 1200, background: "var(--bg)" }}>

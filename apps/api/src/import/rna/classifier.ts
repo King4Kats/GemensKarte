@@ -1,3 +1,7 @@
+// Ce fichier devine la CATÉGORIE d'une association (sport, culture, écologie, etc.)
+// en lisant son nom et la description de son objet. Le fichier officiel des associations
+// (le RNA) ne donne pas de catégorie directement exploitable : on la déduit donc en
+// cherchant des mots-clés. Cette catégorie sert ensuite à colorer/filtrer les points sur la carte.
 import type { CategoryId } from "@gemenskarte/shared";
 
 /**
@@ -13,16 +17,23 @@ import type { CategoryId } from "@gemenskarte/shared";
  * - Soli : "soin" → word-boundary (évite "besoin", "voisin"…)
  */
 
+// Construit une "regex" (motif de recherche) qui ne trouve le mot QUE s'il est entier.
+// Exemple : w("art") trouvera "art" mais PAS "artisan" ni "départ". Le \b signifie
+// "frontière de mot". Le replace(...) protège les caractères spéciaux du terme.
 /** Construit un pattern mot-entier insensible à la casse. */
 const w = (term: string): RegExp =>
   new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
 
+// Renvoie vrai si le texte contient AU MOINS UN des motifs de la liste.
+// Un motif peut être un simple bout de texte (recherche "contient") ou une regex (mot entier).
 function matchesAny(haystack: string, patterns: Array<string | RegExp>): boolean {
   return patterns.some((p) =>
     typeof p === "string" ? haystack.includes(p) : p.test(haystack),
   );
 }
 
+// Liste de règles, testées DANS L'ORDRE : la première règle dont un mot-clé est trouvé gagne.
+// L'ordre compte donc beaucoup (le sport est volontairement placé en premier).
 const RULES: Array<{ cat: CategoryId; patterns: Array<string | RegExp> }> = [
   // ── SPORT — termes spécifiques en premier pour éviter les collisions ──────
   {
@@ -159,10 +170,15 @@ const RULES: Array<{ cat: CategoryId; patterns: Array<string | RegExp> }> = [
   },
 ];
 
+/**
+ * Point d'entrée : reçoit le titre et l'objet d'une association, et renvoie sa catégorie.
+ * On colle titre + objet en un seul texte en minuscules, puis on teste les règles dans l'ordre.
+ */
 export function classify(title: string, objet: string): CategoryId {
+  // haystack = "la botte de foin" dans laquelle on cherche les mots-clés.
   const haystack = `${title} ${objet}`.toLowerCase();
   for (const rule of RULES) {
     if (matchesAny(haystack, rule.patterns)) return rule.cat;
   }
-  return "social"; // Loisirs, amicales, comités de fêtes, divers…
+  return "social"; // Catégorie par défaut si aucun mot-clé : loisirs, amicales, comités de fêtes…
 }

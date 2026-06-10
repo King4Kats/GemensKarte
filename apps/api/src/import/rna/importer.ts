@@ -1,3 +1,11 @@
+/**
+ * Cœur de l'import RNA (répertoire national des associations).
+ * Lit un fichier CSV d'associations, nettoie chaque ligne, devine sa catégorie,
+ * trouve ses coordonnées GPS (géocodage via la Base Adresse Nationale),
+ * puis enregistre tout en base PostgreSQL (table "associations").
+ * L'enregistrement est "idempotent" : relancer l'import ne crée pas de doublons
+ * (chaque association est repérée par son rna_id).
+ */
 import * as fs from "node:fs";
 import * as zlib from "node:zlib";
 import { parse } from "csv-parse";
@@ -63,6 +71,7 @@ function pick(row: Record<string, string>, ...keys: string[]): string {
   return "";
 }
 
+/** Recompose une adresse lisible "numéro type-de-voie nom-de-voie" à partir des colonnes du CSV. */
 function buildAddress(row: Record<string, string>): string {
   return [
     pick(row, "adrs_numvoie"),
@@ -83,6 +92,7 @@ function isDissolved(row: Record<string, string>): boolean {
   return !!m && Number(m[1]) > 1900;
 }
 
+/** Met une valeur entre guillemets pour l'écrire sans risque dans un CSV (retours à la ligne et guillemets échappés). */
 function csvField(value: string): string {
   const v = value.replace(/[\r\n]+/g, " ");
   return `"${v.replace(/"/g, '""')}"`;
@@ -124,6 +134,7 @@ async function geocodeBatch(
   const todo = rows.filter((r) => r.address && r.postalCode);
   if (todo.length === 0) return out;
 
+  // On fabrique un mini-CSV (seq + adresse) à renvoyer à la BAN pour qu'elle géocode tout d'un coup.
   const header = "seq,address,postcode,city";
   const body = todo
     .map((r) =>
@@ -178,6 +189,7 @@ async function geocodeBatch(
  * - upsert par `rna_id` (idempotent), par lots pour borner la mémoire.
  */
 export async function importRna(opts: ImportOptions): Promise<ImportReport> {
+  // On ouvre une connexion à la base PostgreSQL et on prépare le compteur de bilan.
   const env = getEnv();
   const pool = new Pool({ connectionString: env.DATABASE_URL });
   const report: ImportReport = { read: 0, skipped: 0, geocoded: 0, upserted: 0 };
@@ -187,6 +199,8 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
   const batchSize = opts.batchSize ?? 2000;
   let seq = 0;
 
+  // "flush" traite un lot d'associations : il les géocode (si besoin) puis les enregistre en base.
+  // On travaille par lots pour ne pas charger tout le fichier en mémoire d'un coup.
   const flush = async (batch: MappedRow[]): Promise<void> => {
     if (batch.length === 0) return;
 
@@ -213,8 +227,10 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
       }
     }
 
+    // Mode "dry-run" : simulation, on s'arrête avant d'écrire quoi que ce soit en base.
     if (opts.dryRun) return;
 
+    // Pour chaque association du lot, on l'insère (ou on la met à jour si son rna_id existe déjà).
     for (const r of batch) {
       const hasGeo = r.lng !== null && r.lat !== null;
       const params: unknown[] = [
@@ -222,6 +238,7 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
         r.address, r.postalCode, r.city, r.department, r.region, r.tags, status,
       ];
       if (hasGeo) params.push(r.lng, r.lat);
+      // Si on a des coordonnées, on construit un point géographique PostGIS (4326 = système GPS classique).
       const location = hasGeo ? "ST_SetSRID(ST_MakePoint($15,$16),4326)" : "NULL";
 
       await pool.query(
@@ -259,11 +276,13 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
     }),
   );
 
+  // Boucle principale : on lit le CSV ligne par ligne (chaque ligne = une association brute).
   let batch: MappedRow[] = [];
   for await (const row of parser as AsyncIterable<Record<string, string>>) {
     if (opts.limit && report.read >= opts.limit) break;
     report.read++;
 
+    // On a besoin au minimum d'un identifiant et d'un nom ; on écarte aussi les associations dissoutes.
     const rnaId = pick(row, "id", "id_association", "rna");
     const name = pick(row, "titre", "titre_court", "nom");
     if (!rnaId || !name || isDissolved(row)) {
@@ -271,6 +290,7 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
       continue;
     }
 
+    // On déduit le département du code postal ; avec --covered-only on ignore les zones hors périmètre (Ouest).
     const postalCode = pick(row, "adrs_codepostal", "code_postal", "cp");
     const dept = departmentFromPostalCode(postalCode);
     if (opts.coveredOnly && !isCovered(dept)) {
@@ -284,6 +304,7 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
     const rawLat = pick(row, "lat", "latitude");
     const hasInline = !!rawLng && !!rawLat;
 
+    // On range la ligne nettoyée dans le lot courant (mappée vers notre format interne).
     batch.push({
       seq: seq++,
       rnaId,
@@ -303,12 +324,13 @@ export async function importRna(opts: ImportOptions): Promise<ImportReport> {
       lat: hasInline ? Number(rawLat) : null,
     });
 
+    // Dès que le lot est plein, on le traite puis on repart sur un lot vide.
     if (batch.length >= batchSize) {
       await flush(batch);
       batch = [];
     }
   }
-  await flush(batch);
+  await flush(batch); // dernier lot (souvent incomplet) à ne pas oublier.
 
   await pool.end();
   return report;
