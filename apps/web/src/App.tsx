@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Landing, type ExploreOpts } from "./screens/Landing";
+import { RegionPortal } from "./screens/RegionPortal";
 import { AdminReview } from "./components/AdminReview";
 import { LinkReview } from "./components/LinkReview";
 import { MapView } from "./screens/MapView";
+import type { DeptMeta } from "./data/departements";
 
 /** Retire le #hash sans recharger ni empiler d'historique. */
 function clearHash() {
@@ -12,7 +14,8 @@ function clearHash() {
 }
 
 export function App() {
-  const [screen, setScreen] = useState<"landing" | "map">("landing");
+  const [screen, setScreen] = useState<"portal" | "landing" | "map">("portal");
+  const [dept, setDept] = useState<DeptMeta | null>(null);
   const [admin, setAdmin] = useState(false);
   const [links, setLinks] = useState(false);
   const [entry, setEntry] = useState<ExploreOpts>({});
@@ -42,10 +45,19 @@ export function App() {
     <>
       {admin && <AdminReview onClose={() => { setAdmin(false); clearHash(); }} />}
       {links && <LinkReview onClose={() => { setLinks(false); clearHash(); }} />}
-        {screen === "landing"
-        ? <Landing onExplore={(o) => { setEntry(o); setScreen("map"); }} />
-        : <MapView initial={entry} onHome={() => setScreen("landing")} />
-      }
+      {screen === "portal" && (
+        <RegionPortal onSelect={(d) => { setDept(d); setScreen("landing"); }} />
+      )}
+      {screen === "landing" && (
+        <Landing
+          dept={dept}
+          onPortal={() => { setDept(null); setScreen("portal"); }}
+          onExplore={(o) => { setEntry(o); setScreen("map"); }}
+        />
+      )}
+      {screen === "map" && (
+        <MapView initial={entry} onHome={() => setScreen("landing")} />
+      )}
     </>
   );
 }
