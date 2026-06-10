@@ -1,0 +1,6 @@
+# GemensKarte — robots.txt
+# On autorise tout le monde à indexer le site.
+User-agent: *
+Allow: /
+
+Sitemap: https://gemenskarte.fr/sitemap.xml
