@@ -152,7 +152,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: 10,
-        padding: "22px clamp(20px, 5vw, 64px)", position: "relative", zIndex: 5,
+        padding: "22px clamp(20px, 5vw, 64px)", position: "relative", zIndex: 1000,
         opacity: 0, animation: "cmFadeDown .5s ease .05s forwards",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
