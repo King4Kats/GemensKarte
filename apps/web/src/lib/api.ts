@@ -21,6 +21,21 @@ async function getJSON<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+// --- Jeton d'administration ---------------------------------------------------
+// Les pages d'admin (revue des liens, catégories) sont protégées côté serveur.
+// On stocke le jeton saisi par l'admin dans le navigateur (localStorage) et on
+// l'envoie dans l'en-tête `x-admin-token` sur les appels protégés.
+const ADMIN_KEY = "gk_admin_token";
+export const adminAuth = {
+  has: () => !!localStorage.getItem(ADMIN_KEY),
+  set: (t: string) => localStorage.setItem(ADMIN_KEY, t.trim()),
+  clear: () => localStorage.removeItem(ADMIN_KEY),
+};
+function adminHeaders(): Record<string, string> {
+  const t = localStorage.getItem(ADMIN_KEY);
+  return t ? { "x-admin-token": t } : {};
+}
+
 // Tous les filtres possibles pour rechercher des associations.
 // Tout est optionnel : on ne met que ce dont on a besoin pour une recherche.
 export interface ListParams {
@@ -115,21 +130,27 @@ export const api = {
   patchCategory: (id: string, categoryId: string): Promise<void> =>
     fetch(`${BASE}/associations/${id}/category`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...adminHeaders() },
       body: JSON.stringify({ categoryId }),
-    }).then((r) => { if (!r.ok) throw new Error("patch failed"); }),
+    }).then((r) => { if (r.status === 401) adminAuth.clear(); if (!r.ok) throw new Error("patch failed"); }),
   // Liste les associations "en quarantaine" : données douteuses mises de côté,
-  // en attente d'une vérification humaine (page d'administration).
-  listQuarantine: (page = 1, limit = 50) =>
-    getJSON<Paginated<QuarantineAssoc>>(`/associations/quarantine?page=${page}&limit=${limit}`),
+  // en attente d'une vérification humaine (page d'administration, jeton requis).
+  listQuarantine: async (page = 1, limit = 50): Promise<Paginated<QuarantineAssoc>> => {
+    const res = await fetch(`${BASE}/associations/quarantine?page=${page}&limit=${limit}`, {
+      headers: adminHeaders(),
+    });
+    if (res.status === 401) { adminAuth.clear(); throw new Error("admin auth"); }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return (await res.json()) as Paginated<QuarantineAssoc>;
+  },
   // Tranche le sort d'une donnée en quarantaine : "keep" (on garde) ou
   // "drop" (on jette), pour une plateforme/source donnée.
   resolveQuarantine: (id: string, platform: string, action: "keep" | "drop"): Promise<void> =>
     fetch(`${BASE}/associations/${id}/quarantine`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...adminHeaders() },
       body: JSON.stringify({ platform, action }),
-    }).then((r) => { if (!r.ok) throw new Error("resolve failed"); }),
+    }).then((r) => { if (r.status === 401) adminAuth.clear(); if (!r.ok) throw new Error("resolve failed"); }),
   // Suggestions de recherche en temps réel (l'autocomplétion quand on tape).
   // Géré par Meilisearch côté serveur. encodeURIComponent protège le texte
   // tapé pour qu'il passe sans casser l'URL (accents, espaces, &...).
