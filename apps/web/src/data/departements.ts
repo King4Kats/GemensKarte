@@ -43,3 +43,14 @@ export const REGIONS = ["Bretagne", "Pays de la Loire", "Normandie"] as const;
 export function isCovered(code: string): boolean {
   return code in COVERED;
 }
+
+/**
+ * Territoires réellement EN LIGNE : seuls ceux-ci sont colorés et cliquables sur
+ * le portail. Le reste de la carte est laissé en blanc. On ajoute un code ici
+ * quand le département a ses données prêtes (« on colore quand on a les données »).
+ */
+export const READY_CODES = ["85"]; // Vendée
+
+export function isReady(code: string): boolean {
+  return READY_CODES.includes(code);
+}
