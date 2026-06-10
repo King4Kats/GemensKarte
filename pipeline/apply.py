@@ -100,21 +100,28 @@ def route(asso: dict, apply_th: float, quar_th: float) -> dict:
         conf = float(v.get("confidence", 0))
         trusted = bool(v.get("trusted"))
 
+        mt = soc_mt.get(url, "fallback")
         if key == "website":
             score = 1.0 if trusted else website_score(site_sc.get(url, 0), conf)
         else:
-            score = 1.0 if trusted else social_score(soc_mt.get(url, "fallback"), conf)
+            score = 1.0 if trusted else social_score(mt, conf)
 
         rec = {"url": url, "score": score, "reason": v.get("reason", ""), "verdict": verdict}
 
         # Pour les RÉSEAUX SOCIAUX (FB/IG/LI), le LLM ne lit pas la page (bloquée) et reste
         # prudent -> la formule de score peut recaler en quarantaine un lien que le LLM a
         # pourtant explicitement validé ("keep"). On respecte sa décision : un keep social
-        # s'applique (option A). Les "quarantine" (le LLM doutait lui-même) restent gatés
-        # par le score. Le website (page lue en vrai) garde sa règle au score.
+        # s'applique (option A). Le website (page lue en vrai) garde sa règle au score.
         social_keep = (key != "website" and verdict == "keep")
+        # FAUX DOUTE des réseaux sociaux : le LLM met souvent "quarantine" UNIQUEMENT parce
+        # qu'il ne peut pas LIRE la page FB/IG (403 anti-robot), tout en étant très confiant
+        # (>=0.85) que le compte correspond bien à l'asso. La formule de score, elle, plafonne
+        # les matchs "title" à ~0.72 (< seuil 0.75) -> ces bons liens restaient bloqués. On les
+        # promeut. Les VRAIS rejets (mauvaise ville/entité) sont en "drop" (verdict ≠ quarantine),
+        # donc non concernés. (Le website, page lue en vrai, garde sa règle au score.)
+        social_highconf = (key != "website" and verdict == "quarantine" and conf >= 0.85)
 
-        if trusted or social_keep or (verdict != "drop" and score >= apply_th):
+        if trusted or social_keep or social_highconf or (verdict != "drop" and score >= apply_th):
             social[key] = url
         elif verdict != "drop" and score >= quar_th:
             quarantine[key] = rec
