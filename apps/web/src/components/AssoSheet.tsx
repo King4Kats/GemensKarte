@@ -164,7 +164,8 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
               <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <CatBadge cat={asso.categoryId} solid />
-                  {quality && <QualityBadge score={quality.score} tier={quality.tier} />}
+                  {/* Badge qualité (tier A/B/C/D) masqué : c'est une métrique interne
+                      au projet, le public n'en a pas besoin sur la fiche. */}
                 </span>
                 <button
                   onClick={onClose}
