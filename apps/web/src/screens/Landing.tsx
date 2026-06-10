@@ -14,6 +14,7 @@ import { SearchBar } from "../components/SearchBar";
 import { DepartmentMap } from "../components/DepartmentMap";
 import { Icon } from "../components/Icon";
 import { STRIPE_DON_URL } from "../lib/config";
+import { useIsMobile } from "../lib/useIsMobile";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
 import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
@@ -106,6 +107,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   dept?: DeptMeta | null;
 }) {
   const [q, setQ] = useState("");
+  const isMobile = useIsMobile();              // true sur téléphone -> menu burger
+  const [menuOpen, setMenuOpen] = useState(false); // burger ouvert/fermé
   const [modal, setModal] = useState<"recenser" | "deferencer" | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [total, setTotal] = useState<number | null>(null);
@@ -162,17 +165,58 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             </span>
           )}
         </div>
-        <nav style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-          {onPortal && (
-            <button className="btn btn-sm" style={navLink} onClick={onPortal}>← Territoires</button>
-          )}
-          <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
-          <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
-          <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
-          <a className="btn btn-accent btn-sm" href="#dons" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Icon name="heart" size={14} stroke={2.4} /> Soutenir
-          </a>
-        </nav>
+        {/* Desktop : barre de navigation normale. Mobile : un bouton burger qui
+            ouvre un menu déroulant avec EXACTEMENT les mêmes liens. */}
+        {!isMobile ? (
+          <nav style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            {onPortal && (
+              <button className="btn btn-sm" style={navLink} onClick={onPortal}>← Territoires</button>
+            )}
+            <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
+            <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
+            <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
+            <a className="btn btn-accent btn-sm" href="#dons" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <Icon name="heart" size={14} stroke={2.4} /> Soutenir
+            </a>
+          </nav>
+        ) : (
+          <div style={{ position: "relative" }}>
+            <button aria-label="Menu" onClick={() => setMenuOpen((o) => !o)}
+              style={{ display: "grid", placeItems: "center", width: 42, height: 42, borderRadius: 12,
+                border: "1.5px solid var(--hairline)", background: "var(--bg)", cursor: "pointer", color: "var(--ink)" }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                {menuOpen
+                  ? (<><path d="M6 6l12 12" /><path d="M18 6L6 18" /></>)
+                  : (<><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></>)}
+              </svg>
+            </button>
+            {menuOpen && (
+              <>
+                {/* Fond transparent : un clic en dehors referme le menu. */}
+                <div onClick={() => setMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, zIndex: 41,
+                  background: "var(--bg)", borderRadius: 16, boxShadow: "var(--shadow-pop)",
+                  border: "1px solid var(--hairline)", padding: 8, minWidth: 220,
+                  display: "flex", flexDirection: "column", gap: 2 }}>
+                  {onPortal && (
+                    <button className="btn btn-sm" style={{ ...navLink, justifyContent: "flex-start", width: "100%" }}
+                      onClick={() => { setMenuOpen(false); onPortal(); }}>← Territoires</button>
+                  )}
+                  <a className="btn btn-sm" style={{ ...navLink, justifyContent: "flex-start", width: "100%" }}
+                    href="#carte" onClick={() => setMenuOpen(false)}>Choisir un territoire</a>
+                  <button className="btn btn-sm" style={{ ...navLink, justifyContent: "flex-start", width: "100%" }}
+                    onClick={() => { setMenuOpen(false); setModal("recenser"); }}>Référencer mon asso</button>
+                  <a className="btn btn-sm" style={{ ...navLink, justifyContent: "flex-start", width: "100%" }}
+                    href="#stats" onClick={() => setMenuOpen(false)}>Les données</a>
+                  <a className="btn btn-accent btn-sm" href="#dons" onClick={() => setMenuOpen(false)}
+                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 }}>
+                    <Icon name="heart" size={14} stroke={2.4} /> Soutenir
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </header>
 
       {/* ── Hero ── */}
