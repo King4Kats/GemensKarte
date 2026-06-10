@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Plan du site. Pour l'instant : la page d'accueil. Les pages par commune/département
+     (ex: /vendee/challans) seront ajoutées ici quand elles existeront (chantier SEO phase 2). -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://gemenskarte.fr/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+</urlset>
