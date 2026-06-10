@@ -124,6 +124,7 @@ export type ListAssociationsQuery = z.infer<typeof ListAssociationsQuery>;
 export const SuggestQuery = z.object({
   q: z.string().trim().min(1),
   limit: numeric.int().min(1).max(20).default(8),
+  department: z.string().regex(/^\d{2,3}$/).optional(),
 });
 export type SuggestQuery = z.infer<typeof SuggestQuery>;
 

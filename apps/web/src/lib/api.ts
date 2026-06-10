@@ -93,8 +93,10 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ platform, action }),
     }).then((r) => { if (!r.ok) throw new Error("resolve failed"); }),
-  suggest: (q: string, limit = 6) =>
-    getJSON<Suggestion[]>(`/search/suggest?q=${encodeURIComponent(q)}&limit=${limit}`),
+  suggest: (q: string, limit = 6, department?: string) =>
+    getJSON<Suggestion[]>(
+      `/search/suggest?q=${encodeURIComponent(q)}&limit=${limit}${department ? `&department=${department}` : ""}`,
+    ),
 };
 
 /* ---- Helpers de présentation (l'API RNA n'a pas tous les champs riches) ---- */
