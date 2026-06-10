@@ -34,7 +34,7 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
           </span>
         ) : (
           <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--muted)" }}>
-            Survole un territoire coloré pour l'ouvrir
+            Un territoire coloré s'ouvre au clic
           </span>
         )}
       </div>
