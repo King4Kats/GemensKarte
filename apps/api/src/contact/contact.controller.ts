@@ -6,9 +6,10 @@
  * Son rôle : vérifier que les données reçues sont valides, puis passer la main
  * au service (ContactService) qui s'occupe d'envoyer l'email.
  */
-import { Body, Controller, HttpCode, Post } from "@nestjs/common";
+import { Body, Controller, HttpCode, Post, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { RateLimitGuard } from "../common/rate-limit.guard";
 import { ContactService } from "./contact.service";
 
 // Schéma de validation (zod = librairie qui vérifie la forme des données reçues)
@@ -33,7 +34,9 @@ const DeferenceBody = z.object({
 });
 
 // @Controller("contact") = toutes les routes ici commencent par /api/contact
+// @UseGuards(RateLimitGuard) = anti-spam appliqué aux deux formulaires (par IP).
 @Controller("contact")
+@UseGuards(RateLimitGuard)
 export class ContactController {
   // NestJS fournit automatiquement le service dont on a besoin (injection).
   constructor(private readonly svc: ContactService) {}

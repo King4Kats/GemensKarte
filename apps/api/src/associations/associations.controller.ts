@@ -4,7 +4,7 @@
  * adresse que le front appelle). Le contrôleur ne fait que recevoir/valider la
  * requête puis déléguer tout le travail au service.
  */
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import {
   type Association,
   CreateAssociationInput,
@@ -15,6 +15,8 @@ import {
   ResolveQuarantineInput,
 } from "@gemenskarte/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
+import { AdminGuard } from "../common/admin.guard";
+import { RateLimitGuard } from "../common/rate-limit.guard";
 import { AssociationsService } from "./associations.service";
 
 @Controller("associations")
@@ -36,7 +38,10 @@ export class AssociationsController {
   }
 
   /** GET /api/associations/quarantine — fiches avec liens à arbitrer (déclaré avant :id). */
+  // Route d'ADMIN : réservée (jeton x-admin-token requis), sinon n'importe qui
+  // verrait/modifierait les données en attente de modération.
   @Get("quarantine")
+  @UseGuards(AdminGuard)
   listQuarantine(
     @Query("page") page = "1",
     @Query("limit") limit = "50",
@@ -51,7 +56,9 @@ export class AssociationsController {
   }
 
   /** PATCH /api/associations/:id/quarantine — garder (→ social) ou jeter un lien. */
+  // Route d'ADMIN : écrit dans les données affichées -> jeton requis.
   @Patch(":id/quarantine")
+  @UseGuards(AdminGuard)
   resolveQuarantine(
     @Param("id", new ParseUUIDPipe()) id: string,
     @Body(new ZodValidationPipe(ResolveQuarantineInput)) body: ResolveQuarantineInput,
@@ -60,7 +67,9 @@ export class AssociationsController {
   }
 
   /** POST /api/associations — référencement public (statut "pending"). */
+  // Public mais limité en débit (anti-spam) : formulaire ouvert à tous.
   @Post()
+  @UseGuards(RateLimitGuard)
   create(
     @Body(new ZodValidationPipe(CreateAssociationInput)) body: CreateAssociationInput,
   ): Promise<Association> {
@@ -68,7 +77,9 @@ export class AssociationsController {
   }
 
   /** PATCH /api/associations/:id/category — change la catégorie d'une fiche (modération). */
+  // Route d'ADMIN : modifie une fiche -> jeton requis.
   @Patch(":id/category")
+  @UseGuards(AdminGuard)
   patchCategory(
     @Param("id", new ParseUUIDPipe()) id: string,
     @Body(new ZodValidationPipe(PatchCategoryInput)) body: PatchCategoryInput,

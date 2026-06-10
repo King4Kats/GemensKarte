@@ -30,6 +30,9 @@ const EnvSchema = z.object({
   MEILI_HOST: z.string().url(),
   MEILI_MASTER_KEY: z.string().min(1),
   BAN_GEOCODER_URL: z.string().url().default("https://api-adresse.data.gouv.fr"),
+  // Jeton secret pour accéder aux routes d'administration. Vide par défaut =
+  // administration fermée (les routes admin renvoient 401 tant qu'on ne l'a pas réglé).
+  ADMIN_TOKEN: z.string().default(""),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
