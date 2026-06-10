@@ -4,6 +4,7 @@ import { CATEGORIES, catById } from "../lib/categories";
 import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
 import { DepartmentMap } from "../components/DepartmentMap";
+import { Icon } from "../components/Icon";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
 import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
@@ -234,7 +235,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         <div style={{ flex: "1 1 300px", maxWidth: 560 }}>
           <span className="eyebrow" style={{ marginBottom: 16, display: "block" }}>Le projet</span>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 24px", lineHeight: 1.1 }}>
-            Fait avec ❤️ en Vendée,<br />pour toute la région
+            Fait avec <span style={{ color: "#ff2d78", display: "inline-flex", verticalAlign: "middle" }}><Icon name="heart" size={30} stroke={2.2} /></span> en Vendée,<br />pour toute la région
           </h2>
           <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 20px" }}>
             GemensKarte est un projet <strong>100&nbsp;% bénévole</strong>, né d'un constat simple&nbsp;:
@@ -254,19 +255,21 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
         {/* Pillules illustratives */}
         <div style={{ flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 16 }}>
-          {[
-            { emoji: "📍", label: `${total?.toLocaleString("fr-FR") ?? "…"} associations référencées` },
-            { emoji: "🗺️", label: "Vendée — d'autres territoires à venir" },
-            { emoji: "🔍", label: "Recherche par type, ville, distance" },
-            { emoji: "🤝", label: "Entièrement bénévole & open-source" },
-          ].map((it) => (
+          {([
+            { icon: "pin", color: "#2b59ff", label: `${total?.toLocaleString("fr-FR") ?? "…"} associations référencées` },
+            { icon: "map", color: "#ff2d78", label: "Vendée — d'autres territoires à venir" },
+            { icon: "search", color: "#7b3ff2", label: "Recherche par type, ville, distance" },
+            { icon: "users", color: "#00d68f", label: "Entièrement bénévole & open-source" },
+          ] as const).map((it) => (
             <div key={it.label} style={{
               display: "flex", alignItems: "center", gap: 14,
               padding: "14px 18px", borderRadius: "var(--radius)",
               background: "var(--bg)", border: "1px solid var(--hairline)",
               boxShadow: "var(--shadow-card)",
             }}>
-              <span style={{ fontSize: 22 }}>{it.emoji}</span>
+              <span style={{ display: "inline-flex", color: it.color, flexShrink: 0 }}>
+                <Icon name={it.icon} size={20} stroke={2.1} />
+              </span>
               <span style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{it.label}</span>
             </div>
           ))}
@@ -275,7 +278,6 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
       {/* ── Section Qualité des données / Comment on scrape ── */}
       <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)" }}>
-        <ConfettiField count={16} seed={23} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 980, margin: "0 auto" }}>
 
           {/* En-tête */}
@@ -302,16 +304,16 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           {/* Les 3 étapes du pipeline */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
             {([
-              { c: "#3B6BFF", n: "1", emoji: "🔍", t: "On cherche", d: "Pour chaque association, on interroge le web (moteur de recherche) pour trouver ses liens : site, Facebook, Instagram, HelloAsso." },
-              { c: "#EC2D8A", n: "2", emoji: "🧠", t: "On vérifie (IA)", d: "Une IA lit la page (ou son extrait) et tranche : ce lien appartient-il vraiment à CETTE association ? Elle attribue un niveau de confiance." },
-              { c: "#19C37D", n: "3", emoji: "✅", t: "On affiche", d: "Seuls les liens confirmés sont publiés. Les liens douteux partent en revue, les liens faux sont écartés." },
+              { c: "#3B6BFF", n: "1", icon: "search", t: "On cherche", d: "Pour chaque association, on interroge le web (moteur de recherche) pour trouver ses liens : site, Facebook, Instagram, HelloAsso." },
+              { c: "#EC2D8A", n: "2", icon: "sparkle", t: "On vérifie (IA)", d: "Une IA lit la page (ou son extrait) et tranche : ce lien appartient-il vraiment à CETTE association ? Elle attribue un niveau de confiance." },
+              { c: "#19C37D", n: "3", icon: "check", t: "On affiche", d: "Seuls les liens confirmés sont publiés. Les liens douteux partent en revue, les liens faux sont écartés." },
             ] as const).map((s) => (
               <div key={s.n} style={{
                 position: "relative", borderRadius: "var(--radius)", background: "var(--bg)",
                 border: "1px solid var(--hairline)", boxShadow: "var(--shadow-card)", padding: "22px 20px",
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span style={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: 11, background: `color-mix(in srgb, ${s.c} 14%, white)`, fontSize: 18 }}>{s.emoji}</span>
+                  <span style={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: 11, background: `color-mix(in srgb, ${s.c} 14%, white)`, color: s.c }}><Icon name={s.icon} size={18} stroke={2.2} /></span>
                   <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: s.c }}>Étape {s.n}</span>
                 </div>
                 <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", marginBottom: 6 }}>{s.t}</div>
@@ -326,7 +328,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             borderRadius: "var(--radius)", background: "color-mix(in srgb, #19C37D 8%, white)",
             border: "1px solid color-mix(in srgb, #19C37D 28%, white)",
           }}>
-            <span style={{ fontSize: 20 }}>🛡️</span>
+            <span style={{ display: "inline-flex", color: "#19C37D", flexShrink: 0 }}><Icon name="shield" size={20} stroke={2.1} /></span>
             <span style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)", lineHeight: 1.5 }}>
               <strong>Règle d'or :</strong> on privilégie la justesse à l'exhaustivité. En cas de doute,
               rien n'est affiché — plutôt que d'afficher le mauvais Facebook ou un site qui n'existe plus.
@@ -339,15 +341,18 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           </h3>
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10 }}>
             {([
-              ["🌐", "Site web officiel"], ["📘", "Réseaux sociaux"], ["💛", "HelloAsso (dons)"],
-              ["📅", "Agenda à venir"], ["💀", "Liens morts retirés"],
-            ] as const).map(([e, l]) => (
+              { icon: "globe", color: "#7b3ff2", l: "Site web officiel" },
+              { icon: "facebook", color: "#1877f2", l: "Réseaux sociaux" },
+              { icon: "heart", color: "#f5a623", l: "HelloAsso (dons)" },
+              { icon: "calendar", color: "#00d68f", l: "Agenda à venir" },
+              { icon: "close", color: "#9ca3af", l: "Liens morts retirés" },
+            ] as const).map(({ icon, color, l }) => (
               <span key={l} style={{
                 display: "inline-flex", alignItems: "center", gap: 8, height: 40, padding: "0 16px",
                 borderRadius: "var(--radius-pill)", background: "var(--bg)", border: "1.5px solid var(--hairline)",
                 fontSize: 14, fontWeight: 700, color: "var(--ink)",
               }}>
-                <span style={{ fontSize: 16 }}>{e}</span>{l}
+                <span style={{ display: "inline-flex", color }}><Icon name={icon} size={17} stroke={2.1} /></span>{l}
               </span>
             ))}
           </div>
@@ -388,7 +393,6 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
       {/* ── Section Espace Ressources ── */}
       <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
-        <ConfettiField count={14} seed={47} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
           {/* En-tête */}
@@ -534,7 +538,6 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
       {/* ── Section Données ouvertes ── */}
       <section id="stats" style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)" }}>
-        <ConfettiField count={14} seed={71} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
           <span className="eyebrow" style={{ marginBottom: 12, display: "block" }}>Open data</span>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 12px", lineHeight: 1.1 }}>
@@ -548,14 +551,14 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           {dataStats ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 14 }}>
               {([
-                { key: "geolocalisees",  emoji: "📍", label: "Géolocalisées",           color: "#2b59ff" },
-                { key: "avecDescription",emoji: "📝", label: "Description (RNA)",        color: "#00d68f" },
-                { key: "avecWebsite",    emoji: "🌐", label: "Site web officiel",        color: "#7b3ff2" },
-                { key: "avecFacebook",   emoji: "📘", label: "Page Facebook",            color: "#1877f2" },
-                { key: "avecInstagram",  emoji: "📸", label: "Compte Instagram",         color: "#e1306c" },
-                { key: "avecSocial",     emoji: "✅", label: "Fiche avec au moins 1 lien", color: "#00d68f" },
-                { key: "ficheVide",      emoji: "⬜", label: "Fiche RNA seule",          color: "#9ca3af" },
-              ] as const).map(({ key, emoji, label, color }) => {
+                { key: "geolocalisees",  icon: "pin",      label: "Géolocalisées",           color: "#2b59ff" },
+                { key: "avecDescription",icon: "list",     label: "Description (RNA)",        color: "#00d68f" },
+                { key: "avecWebsite",    icon: "globe",    label: "Site web officiel",        color: "#7b3ff2" },
+                { key: "avecFacebook",   icon: "facebook", label: "Page Facebook",            color: "#1877f2" },
+                { key: "avecInstagram",  icon: "insta",    label: "Compte Instagram",         color: "#e1306c" },
+                { key: "avecSocial",     icon: "check",    label: "Fiche avec au moins 1 lien", color: "#00d68f" },
+                { key: "ficheVide",      icon: "square",   label: "Fiche RNA seule",          color: "#9ca3af" },
+              ] as const).map(({ key, icon, label, color }) => {
                 const stat = dataStats[key] as { n: number; pct: number } | undefined;
                 if (!stat) return null;
                 return (
@@ -565,7 +568,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
                     padding: "18px 20px",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                      <span style={{ fontSize: 22 }}>{emoji}</span>
+                      <span style={{ display: "inline-flex", color }}><Icon name={icon} size={20} stroke={2.1} /></span>
                       <span style={{
                         fontSize: 11, fontWeight: 700, letterSpacing: "0.06em",
                         textTransform: "uppercase", color,
