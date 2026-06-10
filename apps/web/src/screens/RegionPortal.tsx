@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { FR_VIEWBOX, FR_DEPT_PATHS } from "../data/fr-departements-paths";
-import { COVERED, REGION_COLOR, REGIONS, isCovered, type DeptMeta } from "../data/departements";
+import { COVERED, REGION_COLOR, READY_CODES, isReady, type DeptMeta } from "../data/departements";
 import { ConfettiField } from "../components/ConfettiField";
 
 /**
- * Portail d'entrée : carte SVG de la France (open data Wikimedia). Les départements
- * couverts (Grand Ouest) sont colorés par région, grossissent au survol et sont
- * cliquables -> on entre dans le GemensKarte de ce territoire. Le reste est grisé
- * (« bientôt »). Premier maillon de la refonte multi-territoires.
+ * Portail d'entrée : carte SVG de la France (open data Wikimedia). Seuls les
+ * territoires EN LIGNE (READY_CODES — aujourd'hui la Vendée) sont colorés, grossissent
+ * au survol et sont cliquables -> on entre dans leur GemensKarte. Tout le reste reste
+ * BLANC tant qu'on n'a pas ses données (« on colore quand on a les données »).
  */
 export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void }) {
   const [hover, setHover] = useState<string | null>(null);
@@ -20,6 +20,7 @@ export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void 
   }, [codes, hover]);
 
   const hovered = hover ? COVERED[hover] : null;
+  const ready = READY_CODES.map((c) => COVERED[c]).filter(Boolean);
 
   return (
     <div style={{ position: "relative", minHeight: "100dvh", display: "flex",
@@ -33,7 +34,7 @@ export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void 
           Gemens<span style={{ color: "var(--accent)" }}>Karte</span>
         </span>
         <span style={{ marginLeft: "auto", fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
-          {Object.keys(COVERED).length} départements · {REGIONS.length} régions
+          {ready.length} territoire{ready.length > 1 ? "s" : ""} en ligne
         </span>
       </header>
 
@@ -47,8 +48,8 @@ export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void 
         </h1>
         <p style={{ margin: "0 0 6px", fontSize: "clamp(14px, 2.4vw, 17px)", color: "var(--ink-2)",
           maxWidth: 560 }}>
-          Un GemensKarte par département. On commence par le Grand Ouest —
-          le reste de la France arrive bientôt.
+          Un GemensKarte par département. On commence par la Vendée — chaque territoire
+          se colore dès qu'il a ses données.
         </p>
 
         {/* Bandeau d'info (suit le survol) */}
@@ -65,7 +66,7 @@ export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void 
             </span>
           ) : (
             <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--muted)" }}>
-              Survole un département coloré pour l'ouvrir
+              Survole un territoire coloré pour l'ouvrir
             </span>
           )}
         </div>
@@ -75,24 +76,24 @@ export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void 
           style={{ width: "100%", maxWidth: 560, height: "auto", maxHeight: "58vh",
             overflow: "visible" }}>
           {ordered.map((code) => {
-            const cov = isCovered(code);
+            const live = isReady(code);
             const meta = COVERED[code];
             const isH = hover === code;
-            const color = cov ? REGION_COLOR[meta.region] : null;
+            const color = live ? REGION_COLOR[meta.region] : null;
             return (
               <path
                 key={code}
                 d={FR_DEPT_PATHS[code]}
-                onMouseEnter={cov ? () => setHover(code) : undefined}
-                onMouseLeave={cov ? () => setHover(null) : undefined}
-                onClick={cov ? () => onSelect(meta) : undefined}
+                onMouseEnter={live ? () => setHover(code) : undefined}
+                onMouseLeave={live ? () => setHover(null) : undefined}
+                onClick={live ? () => onSelect(meta) : undefined}
                 style={{
-                  fill: cov
-                    ? (isH ? color! : `color-mix(in srgb, ${color} 24%, white)`)
-                    : "#eef0ee",
-                  stroke: cov ? "#ffffff" : "#e4e4df",
-                  strokeWidth: cov ? 1.3 : 0.7,
-                  cursor: cov ? "pointer" : "default",
+                  fill: live
+                    ? (isH ? color! : `color-mix(in srgb, ${color} 26%, white)`)
+                    : "#ffffff",
+                  stroke: live ? "#ffffff" : "#e6e6e1",
+                  strokeWidth: live ? 1.3 : 0.7,
+                  cursor: live ? "pointer" : "default",
                   transformBox: "fill-box",
                   transformOrigin: "center",
                   transform: isH ? "scale(1.08)" : "scale(1)",
@@ -105,18 +106,25 @@ export function RegionPortal({ onSelect }: { onSelect: (dept: DeptMeta) => void 
           })}
         </svg>
 
-        {/* Légende des régions */}
+        {/* Territoires disponibles */}
         <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10,
           marginTop: 18 }}>
-          {REGIONS.map((r) => (
-            <span key={r} style={{ display: "inline-flex", alignItems: "center", gap: 7,
-              height: 30, padding: "0 13px", borderRadius: "var(--radius-pill)",
+          {ready.map((d) => (
+            <button key={d.code} onClick={() => onSelect(d)}
+              onMouseEnter={() => setHover(d.code)} onMouseLeave={() => setHover(null)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7,
+              height: 32, padding: "0 14px", borderRadius: "var(--radius-pill)",
               background: "var(--bg-soft)", border: "1.5px solid var(--hairline)",
-              fontSize: 12.5, fontWeight: 700, color: "var(--ink-2)" }}>
-              <span style={{ width: 9, height: 9, borderRadius: 3, background: REGION_COLOR[r] }} />
-              {r}
-            </span>
+              fontSize: 13, fontWeight: 800, color: "var(--ink)", cursor: "pointer",
+              fontFamily: "var(--font)" }}>
+              <span style={{ width: 9, height: 9, borderRadius: 3, background: REGION_COLOR[d.region] }} />
+              {d.nom} <span style={{ color: "var(--accent)" }}>→</span>
+            </button>
           ))}
+          <span style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px",
+            fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>
+            d'autres départements bientôt
+          </span>
         </div>
       </main>
     </div>
