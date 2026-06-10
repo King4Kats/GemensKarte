@@ -10,6 +10,7 @@ import { Icon } from "../components/Icon";
 import { SearchBar } from "../components/SearchBar";
 import { AssoSheet } from "../components/AssoSheet";
 import type { ExploreOpts } from "./Landing";
+import type { DeptMeta } from "../data/departements";
 
 function FilterBar({ active, onToggle, onClear }: { active: string[]; onToggle: (id: string) => void; onClear: () => void }) {
   return (
@@ -44,7 +45,12 @@ function FilterBar({ active, onToggle, onClear }: { active: string[]; onToggle: 
   );
 }
 
-export function MapView({ initial, onHome }: { initial: ExploreOpts; onHome: () => void }) {
+export function MapView({ initial, onHome, onPortal, dept }: {
+  initial: ExploreOpts;
+  onHome: () => void;
+  onPortal?: () => void;
+  dept?: DeptMeta | null;
+}) {
   const [q, setQ] = useState(initial.q || "");
   const [cats, setCats] = useState<string[]>(initial.cat ? [initial.cat] : []);
   const [points, setPoints] = useState<GeoPoint[]>([]);
@@ -178,10 +184,22 @@ export function MapView({ initial, onHome }: { initial: ExploreOpts; onHome: () 
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
       <header style={{ display: "flex", alignItems: "center", gap: 18, padding: "14px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, position: "relative", zIndex: 1200, background: "var(--bg)" }}>
         <Logo size={20} onClick={onHome} />
+        {dept && (
+          <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 11px",
+            borderRadius: "var(--radius-pill)", background: "var(--bg-soft)",
+            border: "1.5px solid var(--hairline)", fontSize: 12.5, fontWeight: 800, flexShrink: 0 }}>
+            {dept.nom}
+          </span>
+        )}
         <div style={{ flex: 1, maxWidth: 440 }}>
           <SearchBar size="sm" value={q} onChange={setQ} suggestions={suggestions} onPick={(s) => openById(s.id)} onSubmit={() => {}} />
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={onHome} style={{ marginLeft: "auto" }}>
+        {onPortal && (
+          <button className="btn btn-ghost btn-sm" onClick={onPortal} style={{ marginLeft: "auto" }}>
+            ← Territoires
+          </button>
+        )}
+        <button className="btn btn-ghost btn-sm" onClick={onHome} style={{ marginLeft: onPortal ? 0 : "auto" }}>
           <Icon name="sparkle" size={15} stroke={2.2} /> Accueil
         </button>
       </header>

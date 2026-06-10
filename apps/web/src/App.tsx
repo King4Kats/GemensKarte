@@ -56,7 +56,12 @@ export function App() {
         />
       )}
       {screen === "map" && (
-        <MapView initial={entry} onHome={() => setScreen("landing")} />
+        <MapView
+          initial={entry}
+          dept={dept}
+          onHome={() => setScreen("landing")}
+          onPortal={() => { setDept(null); setScreen("portal"); }}
+        />
       )}
     </>
   );
