@@ -61,10 +61,10 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const mapElRef = useRef<HTMLDivElement>(null);
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);
 
-  /* ---- points carte (charges une fois) ---- */
+  /* ---- points carte (scopés au département du territoire) ---- */
   useEffect(() => {
-    api.geojson({ located: true }).then(setPoints).catch(() => setPoints([]));
-  }, []);
+    api.geojson({ located: true, department: dept?.code }).then(setPoints).catch(() => setPoints([]));
+  }, [dept?.code]);
 
 
   const flyTo = useCallback((a: Association) => {
@@ -82,9 +82,9 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   useEffect(() => {
     const t = q.trim();
     if (!t) { setSuggestions([]); return; }
-    const id = setTimeout(() => { api.suggest(t, 6).then(setSuggestions).catch(() => setSuggestions([])); }, 160);
+    const id = setTimeout(() => { api.suggest(t, 6, dept?.code).then(setSuggestions).catch(() => setSuggestions([])); }, 160);
     return () => clearTimeout(id);
-  }, [q]);
+  }, [q, dept?.code]);
 
   /* ---- filtrage des points carte par categorie uniquement (pas par texte = freeze) ---- */
   const filteredPoints = useMemo(() => {

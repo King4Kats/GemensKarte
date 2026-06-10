@@ -12,6 +12,6 @@ export class SearchController {
   suggest(
     @Query(new ZodValidationPipe(SuggestQuery)) query: SuggestQuery,
   ): Promise<Suggestion[]> {
-    return this.search.suggest(query.q, query.limit);
+    return this.search.suggest(query.q, query.limit, query.department);
   }
 }
