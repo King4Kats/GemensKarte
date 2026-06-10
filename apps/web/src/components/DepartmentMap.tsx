@@ -55,9 +55,9 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
               onMouseLeave={live ? () => setHover(null) : undefined}
               onClick={live ? () => onSelect(meta) : undefined}
               style={{
-                fill: live ? (isH ? color! : `color-mix(in srgb, ${color} 26%, white)`) : "#ffffff",
-                stroke: live ? "#ffffff" : "#e6e6e1",
-                strokeWidth: live ? 1.3 : 0.7,
+                fill: live ? (isH ? color! : `color-mix(in srgb, ${color} 26%, white)`) : "#fafaf8",
+                stroke: live ? "#ffffff" : "#c2c2bb",
+                strokeWidth: live ? 1.6 : 1.2,
                 cursor: live ? "pointer" : "default",
                 transformBox: "fill-box",
                 transformOrigin: "center",
