@@ -5,6 +5,7 @@ import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
 import { DepartmentMap } from "../components/DepartmentMap";
 import { Icon } from "../components/Icon";
+import { STRIPE_DON_URL } from "../lib/config";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
 import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
@@ -137,6 +138,9 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
           <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
           <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
+          <a className="btn btn-accent btn-sm" href="#dons" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icon name="heart" size={14} stroke={2.4} /> Soutenir
+          </a>
         </nav>
       </header>
 
@@ -601,6 +605,30 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
           <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 32, fontStyle: "italic" }}>
             Données mises à jour en continu · Source : RNA © Ministère de l'Intérieur · {dataStats?.total?.toLocaleString("fr-FR") ?? "…"} associations indexées
+          </p>
+        </div>
+      </section>
+
+      {/* ── Soutenir (dons) ── */}
+      <section id="dons" style={{ padding: "88px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
+          <span style={{ display: "inline-flex", color: "var(--accent)", marginBottom: 16 }}>
+            <Icon name="heart" size={34} stroke={2.1} />
+          </span>
+          <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, letterSpacing: "-0.035em", color: "var(--ink)", margin: "0 0 14px", lineHeight: 1.1 }}>
+            Soutenir GemensKarte
+          </h2>
+          <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 28px" }}>
+            GemensKarte est <strong>gratuit et 100&nbsp;% bénévole</strong>. Les dons couvrent l'hébergement,
+            les noms de domaine et le temps de développement — et aident à ouvrir de nouveaux territoires.
+            Chaque coup de pouce compte.
+          </p>
+          <a href={STRIPE_DON_URL} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-md"
+            style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <Icon name="heart" size={17} stroke={2.3} /> Faire un don
+          </a>
+          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "16px 0 0", fontWeight: 600 }}>
+            Paiement sécurisé par Stripe · montant libre
           </p>
         </div>
       </section>
