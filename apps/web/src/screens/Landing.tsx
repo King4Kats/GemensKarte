@@ -3,6 +3,7 @@ import { api, type Suggestion } from "../lib/api";
 import { CATEGORIES, catById } from "../lib/categories";
 import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
+import { DepartmentMap } from "../components/DepartmentMap";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
 import { REGION_COLOR, type DeptMeta } from "../data/departements";
@@ -73,8 +74,9 @@ function CatChip({ cat, onClick, delay }: { cat: string; onClick: (c: string) =>
 const navLink = { background: "transparent", color: "var(--ink)", fontWeight: 700 } as const;
 
 // ── Landing ─────────────────────────────────────────────────────────────────
-export function Landing({ onExplore, onPortal, dept }: {
-  onExplore: (o: ExploreOpts) => void;
+export function Landing({ onSelect, onExplore, onPortal, dept }: {
+  onSelect: (d: DeptMeta) => void;
+  onExplore?: (o: ExploreOpts) => void;
   onPortal?: () => void;
   dept?: DeptMeta | null;
 }) {
@@ -131,7 +133,7 @@ export function Landing({ onExplore, onPortal, dept }: {
           {onPortal && (
             <button className="btn btn-sm" style={navLink} onClick={onPortal}>← Territoires</button>
           )}
-          <button className="btn btn-sm" style={navLink} onClick={() => onExplore({})}>Explorer la carte</button>
+          <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
           <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
           <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
         </nav>
@@ -192,18 +194,9 @@ export function Landing({ onExplore, onPortal, dept }: {
             Une carte, mille élans citoyens.
           </p>
 
-          {/* SearchBar */}
-          <div style={{ width: "100%", maxWidth: 640, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .6s cubic-bezier(.22,1,.36,1) .38s forwards" }}>
-            <SearchBar size="lg" value={q} onChange={setQ} suggestions={suggestions}
-              onSubmit={() => onExplore({ q })} onPick={(s) => onExplore({ open: s.id })} />
-          </div>
-
-
-          {/* Chips catégories */}
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, marginTop: 28 }}>
-            {CATEGORIES.map((c, i) => (
-              <CatChip key={c.id} cat={c.id} onClick={(cat) => onExplore({ cat })} delay={0.6 + i * 0.06} />
-            ))}
+          {/* Sélecteur de territoire (carte SVG) */}
+          <div id="carte" style={{ width: "100%", maxWidth: 600, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .6s cubic-bezier(.22,1,.36,1) .38s forwards" }}>
+            <DepartmentMap onSelect={onSelect} />
           </div>
         </div>
 
@@ -254,9 +247,9 @@ export function Landing({ onExplore, onPortal, dept }: {
             qu'il s'agisse d'un club de foot de village, d'une amicale de quartier ou d'une association
             de sauvegarde du patrimoine local.
           </p>
-          <button className="btn btn-accent btn-md" onClick={() => onExplore({})}>
-            Explorer la carte →
-          </button>
+          <a className="btn btn-accent btn-md" href="#carte">
+            Choisir un territoire →
+          </a>
         </div>
 
         {/* Pillules illustratives */}
