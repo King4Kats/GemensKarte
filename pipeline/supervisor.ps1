@@ -75,10 +75,32 @@ $verBlock = {
   while ($true) { & $py verify_llm.py --limit 200 *>> "$dir\_verLoop.log"; Start-Sleep -Seconds 20 }
 }
 # HelloAsso : trickle léger (petits lots + pause longue) pour ne pas affamer la découverte DDG.
+# UNIFIÉ : passe désormais par discover_targeted.py --platform helloasso, qui AJOUTE le candidat
+# dans meta.discovery (au lieu d'écrire `social` direct comme l'ancien helloasso.py) -> apply
+# redevient le seul à écrire `social`. find_helloasso (strict) est toujours utilisé en interne.
 $haBlock = {
   param($py, $dir, $dsn)
   Set-Location $dir; $env:DATABASE_URL = $dsn
-  while ($true) { & $py helloasso.py --limit 150 --sleep 2.0 *>> "$dir\_haLoop.log"; Start-Sleep -Seconds 90 }
+  while ($true) { & $py discover_targeted.py --platform helloasso --limit 150 --sleep 2.0 *>> "$dir\_haLoop.log"; Start-Sleep -Seconds 90 }
+}
+# Passes de découverte CIBLÉES par plateforme (réseaux sociaux + site). Trickle TRÈS gentil :
+# elles PARTAGENT DDG avec discover/helloasso/fb->site, donc petits lots + longues pauses.
+# Elles ajoutent des candidats dans meta.discovery puis effacent verification.model -> la boucle
+# verify les reprend toute seule, puis apply (bloc périodique) reconstruit `social`.
+$tgtFbBlock = {
+  param($py, $dir, $dsn)
+  Set-Location $dir; $env:DATABASE_URL = $dsn
+  while ($true) { & $py discover_targeted.py --platform facebook --limit 120 --sleep 2.0 *>> "$dir\_tgtFbLoop.log"; Start-Sleep -Seconds 60 }
+}
+$tgtIgBlock = {
+  param($py, $dir, $dsn)
+  Set-Location $dir; $env:DATABASE_URL = $dsn
+  while ($true) { & $py discover_targeted.py --platform instagram --limit 120 --sleep 2.0 *>> "$dir\_tgtIgLoop.log"; Start-Sleep -Seconds 60 }
+}
+$tgtWebBlock = {
+  param($py, $dir, $dsn)
+  Set-Location $dir; $env:DATABASE_URL = $dsn
+  while ($true) { & $py discover_targeted.py --platform website --limit 120 --sleep 2.0 *>> "$dir\_tgtWebLoop.log"; Start-Sleep -Seconds 60 }
 }
 # Liveness : balaie la DB par lots (HTTP parallèle, local). Gating interne (sain >14j / suspect >1j).
 $livBlock = {
@@ -101,7 +123,8 @@ $fbBlock = {
 }
 
 Log '=== superviseur démarré (2 tunnels) ==='
-$disc = $null; $ver = $null; $ha = $null; $liv = $null; $ev = $null; $fb = $null; $cycle = 0
+$disc = $null; $ver = $null; $ha = $null; $liv = $null; $ev = $null; $fb = $null
+$tgtFb = $null; $tgtIg = $null; $tgtWeb = $null; $cycle = 0
 while ($true) {
   if (-not (Test-Port 5433)) { Start-Tunnel 5433 }
   if (-not (Test-Port 5434)) { Start-Tunnel 5434 }
@@ -127,6 +150,22 @@ while ($true) {
     if ($fb) { Remove-Job $fb -Force -ErrorAction SilentlyContinue }
     $fb = Start-Job -Name gk-fb -ScriptBlock $fbBlock -ArgumentList $py, $dir, $DSN_A
     Log "job fb->site (re)lancé"
+  }
+  # Passes de découverte ciblées (facebook / instagram / website) sur tunnel A = 5433.
+  if ($null -eq $tgtFb -or $tgtFb.State -ne 'Running') {
+    if ($tgtFb) { Remove-Job $tgtFb -Force -ErrorAction SilentlyContinue }
+    $tgtFb = Start-Job -Name gk-tgtfb -ScriptBlock $tgtFbBlock -ArgumentList $py, $dir, $DSN_A
+    Log "job découverte ciblée facebook (re)lancé"
+  }
+  if ($null -eq $tgtIg -or $tgtIg.State -ne 'Running') {
+    if ($tgtIg) { Remove-Job $tgtIg -Force -ErrorAction SilentlyContinue }
+    $tgtIg = Start-Job -Name gk-tgtig -ScriptBlock $tgtIgBlock -ArgumentList $py, $dir, $DSN_A
+    Log "job découverte ciblée instagram (re)lancé"
+  }
+  if ($null -eq $tgtWeb -or $tgtWeb.State -ne 'Running') {
+    if ($tgtWeb) { Remove-Job $tgtWeb -Force -ErrorAction SilentlyContinue }
+    $tgtWeb = Start-Job -Name gk-tgtweb -ScriptBlock $tgtWebBlock -ArgumentList $py, $dir, $DSN_A
+    Log "job découverte ciblée website (re)lancé"
   }
   # Jobs DB-lourds sur tunnel B = 5434.
   if ($null -eq $liv -or $liv.State -ne 'Running') {
