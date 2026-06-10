@@ -5,6 +5,7 @@ import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
+import type { DeptMeta } from "../data/departements";
 
 export interface ExploreOpts {
   q?: string;
@@ -72,7 +73,11 @@ function CatChip({ cat, onClick, delay }: { cat: string; onClick: (c: string) =>
 const navLink = { background: "transparent", color: "var(--ink)", fontWeight: 700 } as const;
 
 // ── Landing ─────────────────────────────────────────────────────────────────
-export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) {
+export function Landing({ onExplore, onPortal, dept }: {
+  onExplore: (o: ExploreOpts) => void;
+  onPortal?: () => void;
+  dept?: DeptMeta | null;
+}) {
   const [q, setQ] = useState("");
   const [modal, setModal] = useState<"recenser" | "deferencer" | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -112,8 +117,20 @@ export function Landing({ onExplore }: { onExplore: (o: ExploreOpts) => void }) 
         padding: "22px clamp(20px, 5vw, 64px)", position: "relative", zIndex: 5,
         opacity: 0, animation: "cmFadeDown .5s ease .05s forwards",
       }}>
-        <Logo size={22} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Logo size={22} />
+          {dept && (
+            <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 11px",
+              borderRadius: "var(--radius-pill)", background: "var(--bg-soft)",
+              border: "1.5px solid var(--hairline)", fontSize: 12.5, fontWeight: 800 }}>
+              {dept.nom}
+            </span>
+          )}
+        </div>
         <nav style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {onPortal && (
+            <button className="btn btn-sm" style={navLink} onClick={onPortal}>← Territoires</button>
+          )}
           <button className="btn btn-sm" style={navLink} onClick={() => onExplore({})}>Explorer la carte</button>
           <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
           <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
