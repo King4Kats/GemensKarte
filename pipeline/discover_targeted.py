@@ -142,11 +142,12 @@ def fetch_pending(conn, platform, limit, dept, redo):
             "@> %(plat_json)s::jsonb)"
         )
         params["plat_json"] = json.dumps([{"platform": platform}])
-    else:
-        # Website : on ne traite que les assos qui n'ont AUCUN candidat site (trous à combler).
-        conds.append(
-            "jsonb_array_length(COALESCE(meta->'discovery'->'websiteCandidates','[]'::jsonb)) = 0"
-        )
+    # else (website) : aucune condition en plus. On vise toutes les assos SANS site VALIDÉ
+    # (déjà couvert par "NOT social ? 'website'" ci-dessus). Le critère "zéro candidat" était
+    # trop restrictif : discover.py remonte presque toujours un site bidon, donc la liste de
+    # candidats est rarement vide -> la passe ne trouvait jamais personne. Ici on relance une
+    # recherche site officiel dédiée ; les NOUVELLES urls (dédoublonnées) repassent par le LLM
+    # qui télécharge + juge la page -> aucun faux site (précision garantie).
     if not redo:
         # Idempotence : on saute celles déjà passées par CETTE passe ciblée.
         conds.append("(meta ? %(marker)s) IS NOT TRUE")
