@@ -16,6 +16,7 @@ import { Logo } from "../components/Logo";
 import { Icon } from "../components/Icon";
 import { SearchBar } from "../components/SearchBar";
 import { AssoSheet } from "../components/AssoSheet";
+import { useIsMobile } from "../lib/useIsMobile";
 import type { ExploreOpts } from "./Landing";
 import type { DeptMeta } from "../data/departements";
 
@@ -71,6 +72,7 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const [points, setPoints] = useState<GeoPoint[]>([]);                         // tous les points géographiques des assos
   const [openAsso, setOpenAsso] = useState<Association | null>(null);           // asso dont la fiche est ouverte
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);             // propositions auto de la recherche
+  const isMobile = useIsMobile();                                               // true sur téléphone -> mise en page adaptée
 
   // Références (valeurs gardées entre les rendus, sans redessiner l'écran) :
   const mapRef = useRef<L.Map | null>(null);                                    // l'objet carte Leaflet
@@ -223,7 +225,11 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   // puis la barre de filtres, puis la carte qui occupe tout le reste de la place.
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-      <header style={{ display: "flex", alignItems: "center", gap: 18, padding: "14px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, position: "relative", zIndex: 1200, background: "var(--bg)" }}>
+      {/* En-tête. Sur téléphone (isMobile) : logo + badge + boutons compacts sur la 1re
+          ligne, et la barre de recherche passe SEULE sur une 2e ligne (pleine largeur). */}
+      <header style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 18,
+        flexWrap: isMobile ? "wrap" : "nowrap", padding: "12px clamp(14px, 3vw, 26px)",
+        borderBottom: "1px solid var(--hairline)", flexShrink: 0, position: "relative", zIndex: 1200, background: "var(--bg)" }}>
         <Logo size={20} onClick={onHome} />
         {dept && (
           <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 11px",
@@ -232,17 +238,19 @@ export function MapView({ initial, onHome, onPortal, dept }: {
             {dept.nom}
           </span>
         )}
-        <div style={{ flex: 1, maxWidth: 440 }}>
+        <div style={{ flex: isMobile ? "1 1 100%" : 1, maxWidth: isMobile ? "none" : 440, order: isMobile ? 2 : 0 }}>
           <SearchBar size="sm" value={q} onChange={setQ} suggestions={suggestions} onPick={(s) => openById(s.id)} onSubmit={() => {}} />
         </div>
-        {onPortal && (
-          <button className="btn btn-ghost btn-sm" onClick={onPortal} style={{ marginLeft: "auto" }}>
-            ← Territoires
+        <div style={{ display: "flex", gap: 6, marginLeft: "auto", order: isMobile ? 1 : 0, flexShrink: 0 }}>
+          {onPortal && (
+            <button className="btn btn-ghost btn-sm" onClick={onPortal} title="Tous les territoires">
+              {isMobile ? "←" : "← Territoires"}
+            </button>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={onHome} title="Accueil">
+            <Icon name="sparkle" size={15} stroke={2.2} />{isMobile ? "" : " Accueil"}
           </button>
-        )}
-        <button className="btn btn-ghost btn-sm" onClick={onHome} style={{ marginLeft: onPortal ? 0 : "auto" }}>
-          <Icon name="sparkle" size={15} stroke={2.2} /> Accueil
-        </button>
+        </div>
       </header>
 
       <div className="cm-scroll" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, overflowX: "auto" }}>
