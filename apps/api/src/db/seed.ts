@@ -1,12 +1,14 @@
+/**
+ * Script de SEED ("amorçage" / remplissage) de la base.
+ * Il insère 12 associations de démonstration (issues de la maquette) réparties
+ * sur le Grand Ouest, pour avoir une carte vivante tout de suite, sans avoir à
+ * importer de vraies données. À lancer une fois la base migrée.
+ */
 import { Pool } from "pg";
 import { getEnv } from "../config/env";
-import { regionFromDepartment } from "../geo/regions";
+import { regionFromDepartment } from "../geo/regions"; // déduit la région à partir du n° de département
 
-/**
- * Données de démonstration = les 12 associations de la maquette (Claude Design),
- * réparties sur le Grand Ouest, avec champs riches (membres, année, besoin, CTA).
- * Permet d'avoir une carte vivante sans géocodage.
- */
+// Forme d'une association de démo : la liste des champs qu'on remplit pour chacune.
 interface Demo {
   slug: string; name: string; cat: string; city: string; dept: string;
   lat: number; lng: number; blurb: string; description: string;
@@ -14,6 +16,8 @@ interface Demo {
   insta: string; fb: string; tags: string[]; action: string; needs: string;
 }
 
+// La liste des 12 associations fictives. lat/lng = coordonnées GPS du point
+// affiché sur la carte. (On ne commente pas chaque entrée : c'est de la donnée.)
 const DEMO: Demo[] = [
   { slug: "marais-vivant", name: "Marais Vivant", cat: "eco", city: "Rennes", dept: "35",
     lat: 48.1119, lng: -1.6742,
@@ -105,6 +109,7 @@ async function main(): Promise<void> {
   const env = getEnv();
   const pool = new Pool({ connectionString: env.DATABASE_URL });
 
+  // On récupère tous les "slugs" (identifiants courts lisibles, ex: "marais-vivant").
   const slugs = DEMO.map((d) => d.slug);
   // Nettoie les démos existantes (nouvelles + anciennes 'demo-*') pour rester idempotent.
   await pool.query(
@@ -112,10 +117,16 @@ async function main(): Promise<void> {
     [slugs],
   );
 
+  // On insère chaque association une par une.
   for (const a of DEMO) {
     const region = regionFromDepartment(a.dept);
+    // On regroupe certains champs dans des objets JSON (colonnes jsonb de la base).
     const social = { website: a.website, instagram: a.insta, facebook: a.fb };
     const meta = { blurb: a.blurb, members: a.members, founded: a.founded, needs: a.needs, action: a.action };
+    // INSERT SQL. Les $1, $2... sont des "trous" remplis par le tableau plus bas
+    // (requête paramétrée = sécurité contre l'injection SQL). ST_MakePoint/ST_SetSRID
+    // (fonctions PostGIS) transforment longitude/latitude en point géographique.
+    // Attention : ST_MakePoint attend (lng, lat) dans cet ordre.
     await pool.query(
       `INSERT INTO associations
         (slug, name, category_id, description, email, phone, website, city, department, region,
@@ -132,6 +143,7 @@ async function main(): Promise<void> {
   console.log("ℹ️  Lance `pnpm search:reindex` pour les indexer dans Meilisearch.");
 }
 
+// Point d'entrée : on lance main() et on quitte proprement en cas d'erreur.
 main().catch((err) => {
   console.error("❌ Seed échoué :", err);
   process.exit(1);

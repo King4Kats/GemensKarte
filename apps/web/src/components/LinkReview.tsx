@@ -1,7 +1,17 @@
+/**
+ * LinkReview — écran de modération des liens "en quarantaine".
+ *
+ * Quand le système détecte un lien réseau social pour une association mais
+ * n'est pas sûr de lui (faux positif possible), il met ce lien "en quarantaine"
+ * au lieu de l'appliquer tout de suite. Ce composant affiche ces liens douteux
+ * un par un (comme un jeu de cartes) pour qu'un humain tranche au clavier :
+ * Garder (le lien devient officiel) ou Jeter.
+ */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, type QuarantineAssoc } from "../lib/api";
 import { Icon } from "./Icon";
 
+// Un "QItem" = une carte à arbitrer = un seul lien douteux d'une association.
 type QItem = {
   asso: QuarantineAssoc;
   platform: string;
@@ -10,6 +20,8 @@ type QItem = {
   reason: string;
 };
 
+// Noms d'affichage propres pour chaque plateforme (la clé technique "facebook"
+// devient l'étiquette lisible "Facebook").
 const PLATFORM_LABEL: Record<string, string> = {
   facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn",
   twitter: "Twitter/X", tiktok: "TikTok", youtube: "YouTube",
@@ -25,6 +37,8 @@ export function LinkReview({ onClose }: { onClose: () => void }) {
   const [done, setDone] = useState<Record<string, "keep" | "drop">>({});
   const [busy, setBusy] = useState(false);
 
+  // Va chercher une page de 50 associations en quarantaine auprès de l'API.
+  // Page 1 = on remplace la liste ; pages suivantes = on ajoute à la suite.
   const load = useCallback((pg: number) => {
     api.listQuarantine(pg, 50)
       .then((r) => {
@@ -34,9 +48,12 @@ export function LinkReview({ onClose }: { onClose: () => void }) {
       .catch(() => {});
   }, []);
 
+  // Au premier affichage, on charge la première page.
   useEffect(() => { load(1); }, [load]);
 
-  // File à plat : un item par lien en quarantaine.
+  // Une association peut avoir plusieurs liens douteux. Ici on "aplatit" :
+  // on transforme la liste d'associations en une file d'items (un par lien),
+  // qu'on présentera ensuite carte après carte.
   const queue = useMemo<QItem[]>(() => {
     const out: QItem[] = [];
     for (const asso of assos) {
@@ -47,6 +64,7 @@ export function LinkReview({ onClose }: { onClose: () => void }) {
     return out;
   }, [assos]);
 
+  // La carte actuellement affichée ("cursor" = position dans la file).
   const item = queue[cursor] ?? null;
 
   // Précharge la page suivante quand on approche de la fin.
@@ -58,6 +76,9 @@ export function LinkReview({ onClose }: { onClose: () => void }) {
     }
   }, [cursor, queue.length, assos.length, total, page, load]);
 
+  // Traite la carte courante : prévient l'API du choix de l'humain
+  // (garder ou jeter), puis passe à la carte suivante. "busy" empêche
+  // un double-clic pendant que la requête est en cours.
   const resolve = useCallback(
     async (action: "keep" | "drop") => {
       if (!item || busy) return;
@@ -72,6 +93,8 @@ export function LinkReview({ onClose }: { onClose: () => void }) {
     [item, busy],
   );
 
+  // Raccourcis clavier pour modérer vite sans la souris :
+  // → / Entrée / K = Garder, ← / D = Jeter, Échap = fermer.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") return onClose();

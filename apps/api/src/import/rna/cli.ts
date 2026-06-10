@@ -1,3 +1,10 @@
+/**
+ * Point d'entrée en ligne de commande (CLI) de l'import RNA.
+ * Le RNA est le répertoire national des associations françaises.
+ * Ce fichier lit les options tapées dans le terminal (--file, --covered-only, etc.),
+ * lance l'import via importRna(), puis affiche un petit bilan chiffré.
+ * Il ne contient pas la logique d'import elle-même : elle est dans importer.ts.
+ */
 import * as path from "node:path";
 import { importRna, type ImportOptions } from "./importer";
 
@@ -12,6 +19,11 @@ import { importRna, type ImportOptions } from "./importer";
  *
  *   # échantillon embarqué (hors-ligne, sans géocodage) :
  *   pnpm import:rna -- --sample --no-geocode
+ */
+/**
+ * Lit les options passées dans le terminal et les transforme en objet.
+ * On part de valeurs par défaut, puis on parcourt les arguments un par un :
+ * chaque "--xxx" reconnu modifie une option. Un "--xxx" inconnu est ignoré (avec un avertissement).
  */
 function parseArgs(argv: string[]): ImportOptions & { sample: boolean } {
   const opts: ImportOptions & { sample: boolean } = {
@@ -44,6 +56,10 @@ function parseArgs(argv: string[]): ImportOptions & { sample: boolean } {
   return opts;
 }
 
+/**
+ * Programme principal : prépare le chemin du fichier, lance l'import, affiche le bilan.
+ * Si aucun fichier n'est fourni, on affiche l'aide et on quitte en erreur.
+ */
 async function main(): Promise<void> {
   const opts = parseArgs(process.argv.slice(2));
   if (opts.sample && !opts.file) {
@@ -72,6 +88,7 @@ async function main(): Promise<void> {
   console.log("ℹ️  Pense à `pnpm search:reindex`.");
 }
 
+// On lance le programme. Si une erreur remonte, on l'affiche et on quitte en code 1 (échec).
 main().catch((err) => {
   console.error("❌ Import échoué :", err);
   process.exit(1);

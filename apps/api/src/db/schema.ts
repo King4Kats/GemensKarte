@@ -1,10 +1,17 @@
+/**
+ * SCHÉMA de la base de données décrit en TypeScript avec Drizzle (un "ORM" :
+ * outil qui fait le lien entre le code et les tables SQL). Ce fichier sert de
+ * "carte" des tables : il donne le nom des colonnes et leur type, ce qui permet
+ * d'écrire des requêtes typées (l'éditeur prévient si on se trompe de champ).
+ *
+ * À savoir : la colonne géographique `location geometry(Point,4326)` (la position
+ * sur la carte) et les index spatiaux ne sont PAS ici ; ils sont créés dans les
+ * migrations SQL et utilisés via du SQL brut (fonctions PostGIS = extension carto).
+ */
 import { jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-/**
- * Schéma Drizzle (typage des requêtes simples). La colonne géographique
- * `location geometry(Point,4326)` et les index spatiaux sont gérés dans les
- * migrations SQL (src/db/migrations) et manipulés via SQL brut (fonctions PostGIS).
- */
+// Table des catégories d'associations (ex : "eco", "sport", "culture").
+// Chaque catégorie porte un libellé, un emoji et des couleurs pour l'affichage.
 export const categories = pgTable("categories", {
   id: text("id").primaryKey(),
   label: text("label").notNull(),
@@ -13,7 +20,12 @@ export const categories = pgTable("categories", {
   colorSoft: text("color_soft").notNull(),
 });
 
+// Table principale : les associations affichées sur la carte.
+// On y trouve les infos publiques (nom, contact, adresse) plus deux colonnes
+// `jsonb` (= du JSON stocké en base, format souple) pour des données variables :
+// `social` (réseaux sociaux) et `meta` (infos libres comme l'année de création).
 export const associations = pgTable("associations", {
+  // id généré automatiquement (uuid = identifiant unique aléatoire).
   id: uuid("id").primaryKey().defaultRandom(),
   rnaId: text("rna_id"),
   name: text("name").notNull(),
@@ -37,4 +49,5 @@ export const associations = pgTable("associations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// Regroupe les tables dans un seul objet, pratique à passer à Drizzle.
 export const schema = { categories, associations };

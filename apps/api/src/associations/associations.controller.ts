@@ -1,3 +1,9 @@
+/**
+ * Contrôleur "Associations" : la porte d'entrée HTTP du module.
+ * Chaque méthode correspond à une URL de l'API (un "endpoint", c'est-à-dire une
+ * adresse que le front appelle). Le contrôleur ne fait que recevoir/valider la
+ * requête puis déléguer tout le travail au service.
+ */
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from "@nestjs/common";
 import {
   type Association,
@@ -61,6 +67,7 @@ export class AssociationsController {
     return this.service.create(body);
   }
 
+  /** PATCH /api/associations/:id/category — change la catégorie d'une fiche (modération). */
   @Patch(":id/category")
   patchCategory(
     @Param("id", new ParseUUIDPipe()) id: string,

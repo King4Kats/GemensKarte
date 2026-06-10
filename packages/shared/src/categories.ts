@@ -25,8 +25,12 @@ export const CATEGORIES: readonly Category[] = [
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];
 
+// Juste la liste des identifiants ("eco", "cult", ...).
+// Pratique pour valider qu'une catégorie reçue existe bien (voir schemas.ts).
 export const CATEGORY_IDS = CATEGORIES.map((c) => c.id) as [string, ...string[]];
 
+// Petit annuaire id -> catégorie complète, pour retrouver une catégorie
+// instantanément à partir de son id, sans reparcourir tout le tableau.
 export const CATEGORY_BY_ID: Record<string, Category> = Object.fromEntries(
   CATEGORIES.map((c) => [c.id, c]),
 );

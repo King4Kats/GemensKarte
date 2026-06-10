@@ -9,8 +9,8 @@ import { COVERED, REGION_COLOR, READY_CODES, isReady, type DeptMeta } from "../d
  * Bloc réutilisable : sert de "sélecteur de territoire" sur la page d'accueil.
  */
 export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void }) {
-  const [hover, setHover] = useState<string | null>(null);
-  const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []);
+  const [hover, setHover] = useState<string | null>(null); // code du département survolé
+  const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []); // liste de tous les codes (ex: "85")
 
   // Le département survolé est rendu en dernier -> au-dessus des voisins (z-order SVG).
   const ordered = useMemo(() => {
@@ -18,7 +18,8 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
     return [...codes.filter((c) => c !== hover), hover];
   }, [codes, hover]);
 
-  const hovered = hover ? COVERED[hover] : null;
+  const hovered = hover ? COVERED[hover] : null; // infos du département survolé (nom, région…)
+  // Liste des départements réellement disponibles (en ligne), pour les boutons en bas.
   const ready = READY_CODES.map((c) => COVERED[c]).filter(Boolean);
 
   return (
@@ -42,6 +43,8 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
       {/* La carte */}
       <svg viewBox={FR_VIEWBOX} role="img" aria-label="Carte des départements français"
         style={{ width: "100%", maxWidth: 520, height: "auto", maxHeight: "56vh", overflow: "visible" }}>
+        {/* On dessine chaque département. "live" = ce territoire a ses données
+            et est donc coloré + cliquable ; sinon il reste blanc et inerte. */}
         {ordered.map((code) => {
           const live = isReady(code);
           const meta = COVERED[code];

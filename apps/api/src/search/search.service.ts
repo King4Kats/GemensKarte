@@ -1,3 +1,8 @@
+/**
+ * Cœur de la recherche : ce service parle au moteur Meilisearch (recherche rapide
+ * et tolérante aux fautes de frappe). Il sait préparer l'index, y ajouter/retirer
+ * des associations, et fournir l'autocomplétion utilisée par la barre de recherche.
+ */
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { CATEGORIES, type Association, type Suggestion } from "@gemenskarte/shared";
 import { MeiliSearch, type Index } from "meilisearch";
@@ -36,6 +41,8 @@ export interface AssociationDoc {
   tags: string[];
 }
 
+/** Transforme une association complète en sa version allégée prête à être indexée
+ *  (on ne garde que les champs utiles à la recherche). */
 export function toSearchDoc(a: Association): AssociationDoc {
   return {
     id: a.id,
@@ -64,10 +71,13 @@ export class SearchService implements OnModuleInit {
     this.client = new MeiliSearch({ host: env.MEILI_HOST, apiKey: env.MEILI_MASTER_KEY });
   }
 
+  /** Raccourci vers l'index "associations" du moteur (= la "table" de recherche). */
   get index(): Index<AssociationDoc> {
     return this.client.index<AssociationDoc>(INDEX);
   }
 
+  // onModuleInit() est appelé automatiquement par NestJS au démarrage de l'app :
+  // on en profite pour s'assurer que l'index existe et est bien configuré.
   async onModuleInit(): Promise<void> {
     await this.ensureIndex();
   }
@@ -83,14 +93,18 @@ export class SearchService implements OnModuleInit {
         typoTolerance: { enabled: true },
         synonyms: SEARCH_SYNONYMS,
       });
+      // Tout s'est bien passé : on note que le moteur est utilisable.
       this.available = true;
       this.logger.log("Index Meilisearch prêt");
     } catch (err) {
+      // Si Meili est éteint/injoignable, on ne plante pas l'API : on désactive
+      // juste la recherche (available = false) et on log un avertissement.
       this.available = false;
       this.logger.warn(`Meilisearch indisponible : ${(err as Error).message}`);
     }
   }
 
+  /** Ajoute (ou met à jour) des associations dans l'index de recherche. */
   async indexDocuments(docs: AssociationDoc[]): Promise<void> {
     if (docs.length === 0) return;
     try {
@@ -100,6 +114,8 @@ export class SearchService implements OnModuleInit {
     }
   }
 
+  /** Retire une association de l'index (ex. si elle est supprimée ou dépubliée).
+   *  best-effort = on essaie sans bloquer ; si ça échoue, tant pis, on continue. */
   async deleteDocument(id: string): Promise<void> {
     try {
       await this.index.deleteDocument(id);
@@ -108,14 +124,18 @@ export class SearchService implements OnModuleInit {
     }
   }
 
+  /** Vide complètement l'index (supprime tous les documents). */
   async clear(): Promise<void> {
     await this.index.deleteAllDocuments().catch(() => undefined);
   }
 
   /** Autocomplétion : renvoie des suggestions légères pour la barre de recherche. */
   async suggest(q: string, limit: number, department?: string): Promise<Suggestion[]> {
+    // Si le moteur n'est pas dispo, on renvoie une liste vide plutôt que d'échouer.
     if (!this.available) return [];
     try {
+      // On limite le nombre de résultats et on ne récupère que les champs utiles.
+      // Si un département est fourni, on filtre dessus (ex. n'afficher que la Vendée).
       const res = await this.index.search(q, {
         limit,
         attributesToRetrieve: ["id", "name", "categoryId", "city"],

@@ -1,3 +1,15 @@
+/**
+ * SearchBar — la barre de recherche d'associations / villes.
+ *
+ * Champ de saisie + bouton, avec une liste d'autocomplétion (suggestions)
+ * qui s'ouvre sous le champ pendant qu'on tape. On peut tout faire au clavier :
+ * flèches haut/bas pour surligner une suggestion, Entrée pour valider,
+ * Échap pour fermer la liste.
+ *
+ * Ce composant ne décide rien tout seul : c'est le parent qui lui fournit la
+ * valeur et les suggestions (via les "props"), et qui réagit aux événements
+ * (onChange, onSubmit, onPick). On parle de composant "contrôlé".
+ */
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { Suggestion } from "../lib/api";
 import { catById } from "../lib/categories";
@@ -14,10 +26,11 @@ interface Props {
 }
 
 export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onSubmit, suggestions = [], onPick }: Props) {
-  const [open, setOpen] = useState(false);
-  const [hi, setHi] = useState(-1);
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false); // la liste de suggestions est-elle ouverte ?
+  const [hi, setHi] = useState(-1);        // index de la suggestion surlignée (-1 = aucune)
+  const wrapRef = useRef<HTMLDivElement>(null); // référence vers la boîte, pour détecter les clics extérieurs
 
+  // Ferme la liste de suggestions quand on clique ailleurs sur la page.
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
@@ -26,9 +39,12 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // On n'affiche les suggestions que si la liste est ouverte, qu'on a tapé
+  // quelque chose, et qu'il y a au moins une suggestion à montrer.
   const showSug = open && !!value && suggestions.length > 0;
-  const big = size === "lg";
+  const big = size === "lg"; // "lg" = grande barre (accueil), "sm" = compacte (en-tête)
 
+  // Navigation au clavier dans le champ de recherche.
   const onKey = (e: KeyboardEvent) => {
     if (!showSug) { if (e.key === "Enter") onSubmit?.(); return; }
     if (e.key === "ArrowDown") { e.preventDefault(); setHi((h) => Math.min(h + 1, suggestions.length - 1)); }
@@ -77,6 +93,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
         </button>
       </div>
 
+      {/* Liste déroulante des suggestions, positionnée juste sous la barre. */}
       {showSug && (
         <div
           className="cm-scroll"
@@ -88,7 +105,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
           }}
         >
           {suggestions.map((s, i) => {
-            const c = catById(s.categoryId);
+            const c = catById(s.categoryId); // catégorie de l'asso : sert à colorer la pastille et afficher le libellé
             return (
               <button
                 key={s.id}
