@@ -15,8 +15,11 @@ async function bootstrap(): Promise<void> {
   // On crée l'app avec cors:false pour le configurer nous-mêmes juste après, de façon contrôlée.
   const app = await NestFactory.create(AppModule, { cors: false });
 
-  // Toutes les routes seront préfixées par /api (ex: /api/associations).
-  app.setGlobalPrefix("api");
+  // Toutes les routes seront préfixées par /api (ex: /api/associations), SAUF les pages
+  // SEO (/vendee, /vendee/:slug, /sitemap.xml) qui doivent avoir des URL propres pour Google.
+  app.setGlobalPrefix("api", {
+    exclude: ["vendee", "vendee/:slug", "sitemap.xml"],
+  });
   // CORS = autorise le front (autre adresse/port) à appeler l'API.
   // "*" => on autorise tout le monde ; sinon on découpe la liste d'origines séparées par des virgules.
   app.enableCors({

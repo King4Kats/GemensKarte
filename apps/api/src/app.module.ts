@@ -13,9 +13,10 @@ import { HealthController } from "./health.controller";
 import { SearchModule } from "./search/search.module";
 import { ContactModule } from "./contact/contact.module";
 import { StatsModule } from "./stats/stats.module";
+import { SeoModule } from "./seo/seo.module";
 
 @Module({
-  imports: [DbModule, GeoModule, SearchModule, CategoriesModule, AssociationsModule, ContactModule, StatsModule],
+  imports: [DbModule, GeoModule, SearchModule, CategoriesModule, AssociationsModule, ContactModule, StatsModule, SeoModule],
   controllers: [HealthController],
 })
 export class AppModule {}
