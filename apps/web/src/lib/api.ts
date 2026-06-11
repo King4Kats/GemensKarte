@@ -8,6 +8,14 @@ import type { Association, Paginated, Suggestion } from "@gemenskarte/shared";
 
 export type { Association, Suggestion };
 
+/** Avancement des passes d'enrichissement, par réseau social (affiché sur l'accueil). */
+export interface ProgressData {
+  territory: string;   // territoire en cours (ex. "Vendée")
+  next: string;        // prochain territoire prévu (ex. "Lot")
+  total: number;       // nb total d'associations
+  platforms: { key: string; label: string; scanned: number; remaining: number; validated: number; pct: number }[];
+}
+
 // Préfixe commun à toutes les URLs : le front appelle "/api/..." et un proxy
 // redirige vers le vrai serveur NestJS.
 const BASE = "/api";
@@ -95,6 +103,8 @@ export const api = {
   },
   // Chiffres globaux du site (nombre d'associations, etc.).
   fetchStats: () => getJSON<Record<string, unknown>>(`/stats`),
+  // Avancement des passes d'enrichissement par réseau social (pour l'accueil).
+  fetchProgress: () => getJSON<ProgressData>(`/stats/progress`),
   // Envoie une demande pour ajouter une association (formulaire "recenser").
   // POST = on envoie des données au serveur ; on ne récupère rien en retour.
   recenser: (data: object): Promise<void> =>

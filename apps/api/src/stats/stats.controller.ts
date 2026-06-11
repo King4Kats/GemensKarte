@@ -17,4 +17,10 @@ export class StatsController {
   get() {
     return this.svc.getStats();
   }
+
+  // GET /stats/progress — avancement des passes d'enrichissement par réseau (pour l'accueil).
+  @Get("progress")
+  progress() {
+    return this.svc.getProgress();
+  }
 }
