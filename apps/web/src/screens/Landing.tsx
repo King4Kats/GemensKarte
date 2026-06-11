@@ -814,6 +814,11 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         <button onClick={() => setModal("deferencer")} style={{ fontSize: 13, color: "var(--muted)", background: "none", border: 0, cursor: "pointer", fontFamily: "var(--font)", padding: 0 }}>
           Déférencer une association
         </button>
+        {/* Lien discret vers les pages SEO par commune (vraie page serveur) — aide Google
+            à les découvrir/crawler en plus du sitemap. */}
+        <a href="/vendee" style={{ fontSize: 13, color: "var(--muted)", textDecoration: "none", fontWeight: 600, fontFamily: "var(--font)" }}>
+          Associations par commune
+        </a>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           Données&nbsp;: RNA © Ministère de l'Intérieur · Cartographie&nbsp;: OpenStreetMap
         </p>
