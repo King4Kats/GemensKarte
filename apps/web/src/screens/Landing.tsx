@@ -157,7 +157,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
     { n: total !== null ? animCount.toLocaleString("fr-FR") : "…", l: "associations" },
     { n: String(COVERED_CODES.length), l: COVERED_CODES.length > 1 ? "territoires" : "territoire" },
     { n: "7", l: "univers" },
-    { n: "100%", l: "open-source" },
+    { n: "100%", l: "code ouvert" },
   ];
 
 
@@ -357,7 +357,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             { icon: "pin", color: "#2b59ff", label: `${total?.toLocaleString("fr-FR") ?? "…"} associations référencées` },
             { icon: "map", color: "#ff2d78", label: "Vendée — d'autres territoires à venir" },
             { icon: "search", color: "#7b3ff2", label: "Recherche par type, ville, distance" },
-            { icon: "users", color: "#00d68f", label: "Entièrement bénévole & open-source" },
+            { icon: "users", color: "#00d68f", label: "Entièrement bénévole & à code ouvert" },
           ] as const).map((it) => (
             <div key={it.label} style={{
               display: "flex", alignItems: "center", gap: 14,
@@ -809,7 +809,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
       }}>
         <Logo size={26} />
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          Projet bénévole · Vendée · Open-source
+          Projet bénévole · Vendée · Code ouvert
         </p>
         <button onClick={() => setModal("deferencer")} style={{ fontSize: 13, color: "var(--muted)", background: "none", border: 0, cursor: "pointer", fontFamily: "var(--font)", padding: 0 }}>
           Déférencer une association
