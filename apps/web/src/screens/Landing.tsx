@@ -156,7 +156,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         opacity: 0, animation: "cmFadeDown .5s ease .05s forwards",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Logo size={22} />
+          <Logo size={34} />
           {dept && (
             <span style={{ display: "inline-flex", alignItems: "center", height: 26, padding: "0 11px",
               borderRadius: "var(--radius-pill)", background: "var(--bg-soft)",
@@ -693,7 +693,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         flexWrap: "wrap", gap: 12,
       }}>
-        <Logo size={18} />
+        <Logo size={26} />
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           Projet bénévole · Vendée · Open-source
         </p>
