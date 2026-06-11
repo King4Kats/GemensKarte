@@ -73,7 +73,9 @@ jobs:
           csv.field_size_limit(10_000_000)
           keep = {"22","29","35","56",          # Bretagne
                   "44","49","53","72","85",      # Pays de la Loire
-                  "14","27","50","61","76"}      # Normandie
+                  "14","27","50","61","76",      # Normandie
+                  "09","11","12","30","31","32", # Occitanie (sans l'Hérault 34)
+                  "46","48","65","66","81","82"}
           src = "rna.csv"
           dst = "data/rna/rna_covered.csv.gz"
 

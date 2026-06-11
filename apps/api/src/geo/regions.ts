@@ -15,6 +15,10 @@ const DEPT_TO_REGION: Record<string, string> = {
   // Normandie
   "14": "Normandie", "27": "Normandie", "50": "Normandie",
   "61": "Normandie", "76": "Normandie",
+  // Occitanie (sans l'Hérault 34)
+  "09": "Occitanie", "11": "Occitanie", "12": "Occitanie", "30": "Occitanie",
+  "31": "Occitanie", "32": "Occitanie", "46": "Occitanie", "48": "Occitanie",
+  "65": "Occitanie", "66": "Occitanie", "81": "Occitanie", "82": "Occitanie",
 };
 
 /** Renvoie le nom de région d'un département, ou null si on ne le couvre pas. */
