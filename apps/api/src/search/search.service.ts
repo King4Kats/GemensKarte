@@ -92,6 +92,9 @@ export class SearchService implements OnModuleInit {
         sortableAttributes: ["name"],
         typoTolerance: { enabled: true },
         synonyms: SEARCH_SYNONYMS,
+        // Plafond de résultats renvoyables : 1000 par défaut, trop bas pour le filtre
+        // carte (un mot large peut matcher plus). On le monte pour ne masquer personne.
+        pagination: { maxTotalHits: 20000 },
       });
       // Tout s'est bien passé : on note que le moteur est utilisable.
       this.available = true;
@@ -149,6 +152,24 @@ export class SearchService implements OnModuleInit {
       }));
     } catch (err) {
       this.logger.warn(`Recherche échouée : ${(err as Error).message}`);
+      return [];
+    }
+  }
+
+  /** Renvoie TOUS les ids d'associations qui matchent un mot-clé (nom OU descriptif,
+   *  synonymes inclus), jusqu'à `cap`. Sert à filtrer les points de la carte : on masque
+   *  ceux qui ne sont pas dans la liste. Léger : on ne récupère que les ids. */
+  async matchIds(q: string, department?: string, cap = 3000): Promise<string[]> {
+    if (!this.available) return [];
+    try {
+      const res = await this.index.search(q, {
+        limit: cap,
+        attributesToRetrieve: ["id"],
+        ...(department ? { filter: `department = "${department}"` } : {}),
+      });
+      return res.hits.map((h) => h.id);
+    } catch (err) {
+      this.logger.warn(`matchIds échoué : ${(err as Error).message}`);
       return [];
     }
   }

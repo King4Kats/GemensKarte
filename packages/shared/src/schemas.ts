@@ -145,6 +145,14 @@ export const SuggestQuery = z.object({
 });
 export type SuggestQuery = z.infer<typeof SuggestQuery>;
 
+// Recherche "filtre carte" : renvoie tous les ids d'assos qui matchent un mot-clé
+// (nom OU descriptif), pour masquer les points non concernés sur la carte.
+export const MatchQuery = z.object({
+  q: z.string().trim().min(1),
+  department: z.string().regex(/^\d{2,3}$/).optional(),
+});
+export type MatchQuery = z.infer<typeof MatchQuery>;
+
 /** Payload de référencement public d'une association. */
 export const CreateAssociationInput = z.object({
   name: z.string().min(2).max(200),
