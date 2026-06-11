@@ -23,4 +23,10 @@ export class StatsController {
   progress() {
     return this.svc.getProgress();
   }
+
+  // GET /stats/territories — stats par département (pour le détail par territoire).
+  @Get("territories")
+  territories() {
+    return this.svc.getByTerritory();
+  }
 }

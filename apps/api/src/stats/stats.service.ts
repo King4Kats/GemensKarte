@@ -106,6 +106,36 @@ export class StatsService {
       }),
     };
   }
+
+  // Stats par DÉPARTEMENT (pour le "détail par territoire") : total + couverture des
+  // liens. Le front regroupe ensuite par région via la table COVERED (nom + région).
+  async getByTerritory() {
+    const rows = await this.db.execute<{
+      department: string; total: number; geo: number;
+      web: number; fb: number; ig: number; soc: number;
+    }>(sql`
+      SELECT department,
+        count(*)::int                                       AS total,
+        count(*) FILTER (WHERE location IS NOT NULL)::int    AS geo,
+        count(*) FILTER (WHERE social ? 'website')::int      AS web,
+        count(*) FILTER (WHERE social ? 'facebook')::int     AS fb,
+        count(*) FILTER (WHERE social ? 'instagram')::int    AS ig,
+        count(*) FILTER (WHERE social <> '{}'::jsonb)::int   AS soc
+      FROM associations
+      WHERE status = 'published' AND department IS NOT NULL
+      GROUP BY department
+      ORDER BY count(*) DESC
+    `);
+    return rows.rows.map((r) => ({
+      department: r.department,
+      total: r.total,
+      geolocalisees: r.geo,
+      avecWebsite: r.web,
+      avecFacebook: r.fb,
+      avecInstagram: r.ig,
+      avecSocial: r.soc,
+    }));
+  }
 }
 
 // Territoire en cours d'enrichissement + prochain prévu (affichés sur l'accueil).
