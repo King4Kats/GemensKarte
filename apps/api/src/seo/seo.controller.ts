@@ -22,6 +22,13 @@ export class SeoController {
     return this.svc.sitemap();
   }
 
+  // Index racine de tous les territoires (défini AVANT :dept pour ne pas être avalé).
+  @Get("territoires")
+  @Header("Content-Type", "text/html; charset=utf-8")
+  territoires(): Promise<string> {
+    return this.svc.rootIndex();
+  }
+
   @Get(":dept")
   @Header("Content-Type", "text/html; charset=utf-8")
   async deptIndex(@Param("dept") dept: string): Promise<string> {

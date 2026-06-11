@@ -1,20 +1,22 @@
-// Départements couverts par les pages SEO (code INSEE -> nom + slug d'URL).
-// Vendée (en cours d'enrichissement) + Occitanie sans l'Hérault (RNA seul pour l'instant).
-// Utilisé par le service SEO ET par main.ts (pour exclure ces routes du préfixe /api).
-export const SEO_DEPARTEMENTS: Record<string, { nom: string; slug: string; region: string }> = {
-  "85": { nom: "Vendée", slug: "vendee", region: "Pays de la Loire" },
-  "09": { nom: "Ariège", slug: "ariege", region: "Occitanie" },
-  "11": { nom: "Aude", slug: "aude", region: "Occitanie" },
-  "12": { nom: "Aveyron", slug: "aveyron", region: "Occitanie" },
-  "30": { nom: "Gard", slug: "gard", region: "Occitanie" },
-  "31": { nom: "Haute-Garonne", slug: "haute-garonne", region: "Occitanie" },
-  "32": { nom: "Gers", slug: "gers", region: "Occitanie" },
-  "46": { nom: "Lot", slug: "lot", region: "Occitanie" },
-  "48": { nom: "Lozère", slug: "lozere", region: "Occitanie" },
-  "65": { nom: "Hautes-Pyrénées", slug: "hautes-pyrenees", region: "Occitanie" },
-  "66": { nom: "Pyrénées-Orientales", slug: "pyrenees-orientales", region: "Occitanie" },
-  "81": { nom: "Tarn", slug: "tarn", region: "Occitanie" },
-  "82": { nom: "Tarn-et-Garonne", slug: "tarn-et-garonne", region: "Occitanie" },
+// Départements couverts par les pages SEO (code INSEE -> nom + slug d'URL + forme
+// grammaticale "de" correcte). Vendée (en cours d'enrichissement) + Occitanie sans
+// l'Hérault (RNA seul pour l'instant).
+// `de` = la bonne tournure française ("de la Vendée", "du Lot", "de l'Ariège",
+// "des Hautes-Pyrénées") -> évite les fautes type "du Vendée".
+export const SEO_DEPARTEMENTS: Record<string, { nom: string; slug: string; de: string; region: string }> = {
+  "85": { nom: "Vendée", slug: "vendee", de: "de la Vendée", region: "Pays de la Loire" },
+  "09": { nom: "Ariège", slug: "ariege", de: "de l'Ariège", region: "Occitanie" },
+  "11": { nom: "Aude", slug: "aude", de: "de l'Aude", region: "Occitanie" },
+  "12": { nom: "Aveyron", slug: "aveyron", de: "de l'Aveyron", region: "Occitanie" },
+  "30": { nom: "Gard", slug: "gard", de: "du Gard", region: "Occitanie" },
+  "31": { nom: "Haute-Garonne", slug: "haute-garonne", de: "de la Haute-Garonne", region: "Occitanie" },
+  "32": { nom: "Gers", slug: "gers", de: "du Gers", region: "Occitanie" },
+  "46": { nom: "Lot", slug: "lot", de: "du Lot", region: "Occitanie" },
+  "48": { nom: "Lozère", slug: "lozere", de: "de la Lozère", region: "Occitanie" },
+  "65": { nom: "Hautes-Pyrénées", slug: "hautes-pyrenees", de: "des Hautes-Pyrénées", region: "Occitanie" },
+  "66": { nom: "Pyrénées-Orientales", slug: "pyrenees-orientales", de: "des Pyrénées-Orientales", region: "Occitanie" },
+  "81": { nom: "Tarn", slug: "tarn", de: "du Tarn", region: "Occitanie" },
+  "82": { nom: "Tarn-et-Garonne", slug: "tarn-et-garonne", de: "du Tarn-et-Garonne", region: "Occitanie" },
 };
 
 export const SEO_DEPT_CODES = Object.keys(SEO_DEPARTEMENTS);

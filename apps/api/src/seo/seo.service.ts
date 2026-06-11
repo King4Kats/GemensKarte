@@ -137,7 +137,7 @@ ${o.body}
     if (!deptCode) return null;
     const c = (await this.allCommunes()).find((x) => x.dept === deptCode && x.slug === communeSlug);
     if (!c) return null;
-    const deptNom = SEO_DEPARTEMENTS[deptCode].nom;
+    const { nom: deptNom, de: deptDe } = SEO_DEPARTEMENTS[deptCode];
     const rows = await this.db.execute<{ name: string; category_id: string; social: Record<string, string> | null; website: string | null }>(sql`
       SELECT name, category_id, social, website
       FROM associations
@@ -163,7 +163,7 @@ ${o.body}
     });
     const body = `
 <h1>Associations à ${esc(c.display)} (${esc(deptNom)})</h1>
-<p class="lead">${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} à ${esc(c.display)} — sport, culture, solidarité, environnement, éducation… Explorez-les sur la <a href="/">carte interactive de GemensKarte</a>. Voir <a href="/${c.deptSlug}">toutes les communes du ${esc(deptNom)}</a>.</p>
+<p class="lead">${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} à ${esc(c.display)} — sport, culture, solidarité, environnement, éducation… Explorez-les sur la <a href="/">carte interactive de GemensKarte</a>. Voir <a href="/${c.deptSlug}">toutes les communes ${esc(deptDe)}</a>.</p>
 <ul class="assos">
 ${lis}
 </ul>
@@ -175,16 +175,16 @@ ${reste}`;
   async deptIndex(deptSlug: string): Promise<string | null> {
     const deptCode = SEO_CODE_BY_SLUG[deptSlug];
     if (!deptCode) return null;
-    const nom = SEO_DEPARTEMENTS[deptCode].nom;
+    const { nom, de } = SEO_DEPARTEMENTS[deptCode];
     const communes = (await this.allCommunes()).filter((c) => c.dept === deptCode);
     const total = communes.reduce((s, c) => s + c.n, 0);
     const liens = communes.map((c) =>
       `  <a href="/${c.deptSlug}/${c.slug}">${esc(c.display)} <span class="c">${c.n}</span></a>`,
     ).join("\n");
-    const title = `Associations du ${nom} par commune — GemensKarte`;
-    const desc = `Toutes les communes du ${nom} (${communes.length}) et leurs associations (${total} au total) : trouvez les assos près de chez vous.`;
+    const title = `Associations ${de} par commune — GemensKarte`;
+    const desc = `Toutes les communes ${de} (${communes.length}) et leurs associations (${total} au total) : trouvez les assos près de chez vous.`;
     const body = `
-<h1>Associations du ${esc(nom)}, commune par commune</h1>
+<h1>Associations ${esc(de)}, commune par commune</h1>
 <p class="lead">${communes.length} communes · ${total} associations référencées. Choisissez une commune, ou explorez la <a href="/">carte interactive</a>.</p>
 <div class="grid">
 ${liens}
@@ -194,12 +194,43 @@ ${this.autresDepts(deptSlug)}`;
     return this.doc({ title, desc, canonical: `${BASE}/${deptSlug}`, body });
   }
 
-  /** Sitemap XML : accueil + chaque index département + chaque commune (avec lastmod). */
+  /** Index RACINE : tous les territoires couverts (départements), groupés par région. */
+  async rootIndex(): Promise<string> {
+    const communes = await this.allCommunes();
+    const byDept: Record<string, { communes: number; assos: number }> = {};
+    for (const c of communes) {
+      const e = (byDept[c.dept] ??= { communes: 0, assos: 0 });
+      e.communes += 1; e.assos += c.n;
+    }
+    const byRegion: Record<string, string[]> = {};
+    for (const code of SEO_DEPT_CODES) {
+      (byRegion[SEO_DEPARTEMENTS[code].region] ??= []).push(code);
+    }
+    const sections = Object.entries(byRegion).map(([region, codes]) => {
+      const cards = codes.map((code) => {
+        const d = SEO_DEPARTEMENTS[code];
+        const stat = byDept[code] ?? { communes: 0, assos: 0 };
+        return `  <a href="/${d.slug}">${esc(d.nom)} <span class="c">${stat.assos} assos · ${stat.communes} communes</span></a>`;
+      }).join("\n");
+      return `<h2 style="font-size:18px;margin:28px 0 12px;font-weight:800">${esc(region)}</h2>\n<div class="grid">\n${cards}\n</div>`;
+    }).join("\n");
+    const totalAssos = Object.values(byDept).reduce((s, e) => s + e.assos, 0);
+    const title = "Associations par commune (Vendée & Occitanie) — GemensKarte";
+    const desc = `Trouvez les associations près de chez vous : ${communes.length} communes, ${totalAssos} associations référencées en Vendée et Occitanie.`;
+    const body = `
+<h1>Associations par commune</h1>
+<p class="lead">${communes.length} communes · ${totalAssos} associations référencées. Choisissez votre territoire, ou explorez la <a href="/">carte interactive</a>.</p>
+${sections}`;
+    return this.doc({ title, desc, canonical: `${BASE}/territoires`, body });
+  }
+
+  /** Sitemap XML : accueil + index racine + chaque index département + chaque commune. */
   async sitemap(): Promise<string> {
     const communes = await this.allCommunes();
     const globalMod = communes.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
     const urls = [
       `<url><loc>${BASE}/</loc><lastmod>${globalMod}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${BASE}/territoires</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
       ...Object.values(SEO_DEPARTEMENTS).map((d) =>
         `<url><loc>${BASE}/${d.slug}</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`),
       ...communes.map((c) =>
