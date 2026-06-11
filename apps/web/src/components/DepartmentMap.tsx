@@ -1,16 +1,17 @@
 import { useMemo, useState } from "react";
 import { FR_VIEWBOX, FR_DEPT_PATHS } from "../data/fr-departements-paths";
-import { COVERED, REGION_COLOR, READY_CODES, isReady, type DeptMeta } from "../data/departements";
+import {
+  COVERED, STATE_COLOR, STATE_LABEL, STATE_ORDER, isCovered, colorOf, type DeptMeta,
+} from "../data/departements";
 
 /**
- * Carte SVG de la France (open data Wikimedia). Seuls les territoires EN LIGNE
- * (READY_CODES — aujourd'hui la Vendée) sont colorés, grossissent au survol et
- * sont cliquables. Le reste reste BLANC tant qu'il n'a pas ses données.
- * Bloc réutilisable : sert de "sélecteur de territoire" sur la page d'accueil.
+ * Carte SVG de la France. Chaque territoire COUVERT est coloré selon son ÉTAT de
+ * scrap (rose = en cours, bleu = non scrapé, vert = effectué) et est cliquable.
+ * Le reste de la France est laissé en blanc. Sert de sélecteur de territoire.
  */
 export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void }) {
   const [hover, setHover] = useState<string | null>(null); // code du département survolé
-  const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []); // liste de tous les codes (ex: "85")
+  const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []); // tous les codes dessinés
 
   // Le département survolé est rendu en dernier -> au-dessus des voisins (z-order SVG).
   const ordered = useMemo(() => {
@@ -18,9 +19,7 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
     return [...codes.filter((c) => c !== hover), hover];
   }, [codes, hover]);
 
-  const hovered = hover ? COVERED[hover] : null; // infos du département survolé (nom, région…)
-  // Liste des départements réellement disponibles (en ligne), pour les boutons en bas.
-  const ready = READY_CODES.map((c) => COVERED[c]).filter(Boolean);
+  const hovered = hover ? COVERED[hover] : null;
 
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -28,9 +27,9 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
       <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
         {hovered ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>
-            <span style={{ width: 11, height: 11, borderRadius: 3, background: REGION_COLOR[hovered.region] }} />
+            <span style={{ width: 11, height: 11, borderRadius: 3, background: STATE_COLOR[hovered.state] }} />
             {hovered.nom}
-            <span style={{ fontWeight: 600, color: "var(--muted)" }}>· {hovered.region}</span>
+            <span style={{ fontWeight: 600, color: "var(--muted)" }}>· {STATE_LABEL[hovered.state]}</span>
             <span style={{ color: "var(--accent)", fontWeight: 800 }}>Entrer →</span>
           </span>
         ) : (
@@ -43,13 +42,11 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
       {/* La carte */}
       <svg viewBox={FR_VIEWBOX} role="img" aria-label="Carte des départements français"
         style={{ width: "100%", maxWidth: 520, height: "auto", maxHeight: "56vh", overflow: "visible" }}>
-        {/* On dessine chaque département. "live" = ce territoire a ses données
-            et est donc coloré + cliquable ; sinon il reste blanc et inerte. */}
         {ordered.map((code) => {
-          const live = isReady(code);
+          const live = isCovered(code);
           const meta = COVERED[code];
           const isH = hover === code;
-          const color = live ? REGION_COLOR[meta.region] : null;
+          const color = live ? colorOf(code)! : null;
           return (
             <path
               key={code}
@@ -58,7 +55,7 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
               onMouseLeave={live ? () => setHover(null) : undefined}
               onClick={live ? () => onSelect(meta) : undefined}
               style={{
-                fill: live ? (isH ? color! : `color-mix(in srgb, ${color} 26%, white)`) : "#fafaf8",
+                fill: live ? (isH ? color! : `color-mix(in srgb, ${color} 30%, white)`) : "#fafaf8",
                 stroke: live ? "#ffffff" : "#c2c2bb",
                 strokeWidth: live ? 1.6 : 1.2,
                 cursor: live ? "pointer" : "default",
@@ -74,22 +71,14 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
         })}
       </svg>
 
-      {/* Territoires disponibles */}
-      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, marginTop: 16 }}>
-        {ready.map((d) => (
-          <button key={d.code} onClick={() => onSelect(d)}
-            onMouseEnter={() => setHover(d.code)} onMouseLeave={() => setHover(null)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 7, height: 32, padding: "0 14px",
-              borderRadius: "var(--radius-pill)", background: "var(--bg-soft)", border: "1.5px solid var(--hairline)",
-              fontSize: 13, fontWeight: 800, color: "var(--ink)", cursor: "pointer", fontFamily: "var(--font)" }}>
-            <span style={{ width: 9, height: 9, borderRadius: 3, background: REGION_COLOR[d.region] }} />
-            {d.nom} <span style={{ color: "var(--accent)" }}>→</span>
-          </button>
+      {/* Légende : code couleur des états de scrap */}
+      <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16, marginTop: 16 }}>
+        {STATE_ORDER.map((s) => (
+          <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: 13, fontWeight: 700, color: "var(--ink-2)" }}>
+            <span style={{ width: 12, height: 12, borderRadius: 4, background: STATE_COLOR[s] }} />
+            {STATE_LABEL[s]}
+          </span>
         ))}
-        <span style={{ display: "inline-flex", alignItems: "center", height: 32, padding: "0 12px",
-          fontSize: 12.5, fontWeight: 600, color: "var(--muted)" }}>
-          d'autres départements bientôt
-        </span>
       </div>
     </div>
   );
