@@ -8,6 +8,17 @@ import type { Association, Paginated, Suggestion } from "@gemenskarte/shared";
 
 export type { Association, Suggestion };
 
+/** Stats d'un département (détail par territoire). */
+export interface TerritoryStat {
+  department: string;
+  total: number;
+  geolocalisees: number;
+  avecWebsite: number;
+  avecFacebook: number;
+  avecInstagram: number;
+  avecSocial: number;
+}
+
 /** Avancement des passes d'enrichissement, par réseau social (affiché sur l'accueil). */
 export interface ProgressData {
   territory: string;   // territoire en cours (ex. "Vendée")
@@ -105,6 +116,8 @@ export const api = {
   fetchStats: () => getJSON<Record<string, unknown>>(`/stats`),
   // Avancement des passes d'enrichissement par réseau social (pour l'accueil).
   fetchProgress: () => getJSON<ProgressData>(`/stats/progress`),
+  // Stats par département (détail par territoire, sous les stats nationales).
+  fetchTerritories: () => getJSON<TerritoryStat[]>(`/stats/territories`),
   // Envoie une demande pour ajouter une association (formulaire "recenser").
   // POST = on envoie des données au serveur ; on ne récupère rien en retour.
   recenser: (data: object): Promise<void> =>
