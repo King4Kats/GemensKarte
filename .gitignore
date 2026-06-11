@@ -13,8 +13,12 @@ build/
 .env.*.local
 
 # data dumps (RNA files are large — keep out of git)
+# Le .gz est trop volumineux pour le dépôt (limite GitHub 100 Mo/fichier) :
+# il est publié en Release asset (tag rna-latest) par le workflow fetch-rna,
+# et récupéré par scripts/get-rna.sh. Voir aussi data/rna/rna_occitanie plus bas.
 data/rna/*.csv
 data/rna/*.zip
+data/rna/*.gz
 !data/rna/.gitkeep
 
 # logs / os

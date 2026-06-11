@@ -2,9 +2,11 @@ name: Fetch RNA data
 
 # Télécharge le Répertoire National des Associations (fichier waldec) depuis
 # data.gouv.fr — possible ici car les runners GitHub ont un accès réseau ouvert,
-# contrairement à l'environnement de dev. Filtre sur le périmètre couvert
-# (Bretagne / Pays de la Loire / Normandie), compresse en .csv.gz et committe
-# le résultat dans data/rna/. L'importeur sait lire ce .gz directement.
+# contrairement à l'environnement de dev. Filtre sur le périmètre couvert,
+# compresse en .csv.gz et PUBLIE le résultat en Release asset (tag rna-latest).
+# Le fichier n'est PLUS versionné dans le dépôt : trop volumineux (limite GitHub
+# 100 Mo/fichier) et il grossit à chaque département ajouté. Côté consommateur,
+# scripts/get-rna.sh le télécharge depuis la Release avant `pnpm import:rna`.
 
 on:
   workflow_dispatch:
@@ -112,19 +114,21 @@ jobs:
           PY
           SZ=$(stat -c%s data/rna/rna_covered.csv.gz)
           echo "taille gz : $SZ octets"
-          if [ "$SZ" -gt 95000000 ]; then
-            echo "::error::Fichier > 95 Mo : dépasse la limite GitHub. Découper par département."; exit 1
+          # Publié en Release asset (plafond 2 Go), plus dans le dépôt : garde-fou large.
+          if [ "$SZ" -gt 1900000000 ]; then
+            echo "::error::Fichier > 1,9 Go : dépasse la limite d'un asset de Release."; exit 1
           fi
 
-      - name: Committer le fichier
+      - name: Publier le fichier en Release asset
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/rna/rna_covered.csv.gz
-          if git diff --cached --quiet; then
-            echo "Aucun changement à committer."
-          else
-            git commit -m "data: RNA waldec périmètre couvert ($(date +%Y-%m-%d)) [skip ci]"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
-          fi
+          TAG="rna-latest"
+          # Crée la release si absente (idempotent), puis remplace l'asset existant.
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" \
+              --title "RNA — données courantes" \
+              --notes "Fichier RNA waldec filtré sur le périmètre couvert, régénéré automatiquement. Volumineux → publié ici plutôt que versionné. Récupération via scripts/get-rna.sh."
+          gh release upload "$TAG" data/rna/rna_covered.csv.gz --clobber
+          echo "Asset rna_covered.csv.gz publié sur la release $TAG."

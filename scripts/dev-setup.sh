@@ -15,7 +15,11 @@ echo "▶️  Migrations + seed…"
 pnpm db:migrate
 pnpm db:seed
 
-# Données RNA réelles si le fichier a été récupéré (workflow fetch-rna)
+# Données RNA réelles : le .gz n'est plus versionné (trop gros) → on le récupère
+# depuis la Release GitHub s'il est absent. Échec réseau toléré (setup continue).
+if [ ! -f data/rna/rna_covered.csv.gz ]; then
+  bash scripts/get-rna.sh || echo "⚠️  RNA non récupéré (réseau ?) — import sauté."
+fi
 if [ -f data/rna/rna_covered.csv.gz ]; then
   echo "▶️  Import RNA (échantillon 5000, sans géocodage)…"
   pnpm import:rna -- --file data/rna/rna_covered.csv.gz --no-geocode --limit 5000
