@@ -439,37 +439,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             ))}
           </div>
 
-          {/* Le score de qualité */}
-          <div style={{ marginTop: 64, borderRadius: "var(--radius-lg, 22px)", background: "var(--bg-soft)", padding: "clamp(28px, 4vw, 44px)" }}>
-            <div style={{ textAlign: "center", maxWidth: 620, margin: "0 auto 28px" }}>
-              <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", margin: "0 0 10px" }}>
-                Une note de qualité par fiche
-              </h3>
-              <p style={{ fontSize: 15.5, lineHeight: 1.65, color: "var(--ink-2)", margin: 0 }}>
-                Chaque fiche reçoit une note&nbsp;/100 et un niveau, selon la <strong>richesse de ses liens</strong>,
-                leur <strong>disponibilité</strong> (liens vivants), la <strong>fraîcheur</strong> des infos et la
-                présence d'un <strong>agenda</strong>. Elle apparaît en haut de chaque fiche.
-              </p>
-            </div>
-            {/* Les 4 niveaux */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 22 }}>
-              {([
-                { tier: "A", c: "#00b87a", l: "Excellente", d: "liens vérifiés, vivants, à jour" },
-                { tier: "B", c: "#2b7fff", l: "Bonne", d: "bien fournie, quelques manques" },
-                { tier: "C", c: "#f5a623", l: "Correcte", d: "des infos, à compléter" },
-                { tier: "D", c: "#9ca3af", l: "À enrichir", d: "fiche encore pauvre" },
-              ] as const).map((t) => (
-                <div key={t.tier} style={{ background: "var(--bg)", borderRadius: "var(--radius)", border: "1px solid var(--hairline)", padding: "16px 16px 14px", textAlign: "center" }}>
-                  <span style={{ display: "grid", placeItems: "center", width: 36, height: 36, borderRadius: "50%", background: t.c, color: "#fff", fontSize: 18, fontWeight: 800, margin: "0 auto 8px" }}>{t.tier}</span>
-                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>{t.l}</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--muted)", marginTop: 2, lineHeight: 1.4 }}>{t.d}</div>
-                </div>
-              ))}
-            </div>
-            <p style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", margin: 0, fontStyle: "italic" }}>
-              La note grimpe toute seule au fil de l'enrichissement automatique, et sert aussi à repérer les fiches à retravailler en priorité.
-            </p>
-          </div>
+          {/* Bloc "note de qualité par fiche" retiré : le badge n'est plus affiché
+              au public, donc on n'explique plus la notation A/B/C/D ici. */}
         </div>
       </section>
 
