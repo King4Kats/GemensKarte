@@ -1,73 +1,73 @@
 /**
- * Service SEO : génère de VRAIES pages HTML (côté serveur) par commune de Vendée,
- * ex. /vendee/challans, avec la liste des associations en clair -> indexable par Google
- * (la SPA, elle, est en JavaScript et ne se référence pas bien sur "association Challans").
+ * Service SEO : génère de VRAIES pages HTML (côté serveur) par commune, ex.
+ *   /vendee/challans, /haute-garonne/toulouse, /lot/cahors …
+ * avec la liste des associations en clair -> indexable par Google (la SPA, en JS,
+ * ne se référence pas bien sur "association Challans").
  *
- * Ces pages ne sont PAS liées depuis le site (masquées au visiteur normal) : on n'y arrive
- * que via Google. Elles renvoient vers la carte interactive. Le sitemap.xml les liste toutes.
+ * Couvre la Vendée + l'Occitanie (sans l'Hérault) — voir territoires.ts.
+ * Ces pages ne sont PAS mises en avant dans le site (on n'y arrive que via Google) ;
+ * elles renvoient vers la carte interactive. Le sitemap.xml les liste toutes.
  */
 import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import { CATEGORIES } from "@gemenskarte/shared";
 import { DB, type Db } from "../db/db.module";
+import { SEO_DEPARTEMENTS, SEO_DEPT_CODES, SEO_CODE_BY_SLUG } from "./territoires";
 
-const DEPT = "85";                       // Vendée seulement, pour l'instant
 const BASE = "https://gemenskarte.fr";
-const MAX_LISTE = 600;                   // plafond d'assos affichées par page (évite des pages énormes)
+const MAX_LISTE = 600; // plafond d'assos affichées par page (évite des pages énormes)
 
-// id de catégorie -> libellé lisible (ex. "cult" -> "Culture").
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label]));
 
-/** Échappe les caractères spéciaux HTML (les noms d'assos contiennent &, <, ', etc.). */
 function esc(s: string | null | undefined): string {
-  return (s ?? "")
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-/** Espaces multiples -> un seul (la base contient "La   Roche-sur-Yon"). */
 function cleanCity(s: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
-/** Transforme un nom de commune en identifiant d'URL ("L'Île-d'Yeu" -> "l-ile-d-yeu"). */
 function slugify(s: string): string {
-  return cleanCity(s)
-    .toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  return cleanCity(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
-/** Convertit une date (Date ou texte) en AAAA-MM-JJ pour le <lastmod> du sitemap. */
 function isoDate(v: unknown): string {
   const d = v instanceof Date ? v : new Date(String(v ?? ""));
   return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
 }
 
-interface Commune { city: string; display: string; slug: string; n: number; updated: string; }
+interface Commune { dept: string; deptSlug: string; city: string; display: string; slug: string; n: number; updated: string; }
 
 @Injectable()
 export class SeoService {
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  // La liste des communes change peu : on la met en cache 30 min pour éviter de la
-  // recalculer (avec les slugs) à chaque visite de robot.
+  // La liste des communes (tous départements couverts) change peu : cache 30 min.
   private cache: { at: number; list: Commune[] } | null = null;
 
-  private async communes(): Promise<Commune[]> {
+  private async allCommunes(): Promise<Commune[]> {
     if (this.cache && Date.now() - this.cache.at < 30 * 60 * 1000) return this.cache.list;
-    const rows = await this.db.execute<{ city: string; n: number; updated: unknown }>(sql`
-      SELECT city, count(*)::int AS n, max(updated_at) AS updated
-      FROM associations
-      WHERE department = ${DEPT} AND status = 'published'
-        AND city IS NOT NULL AND length(trim(city)) > 0
-      GROUP BY city
-      ORDER BY count(*) DESC, city ASC
-    `);
-    const seen = new Set<string>();
+    const inList = SEO_DEPT_CODES.map((c) => `'${c}'`).join(","); // codes constants -> sûr
+    const rows = await this.db.execute<{ department: string; city: string; n: number; updated: unknown }>(
+      sql.raw(`
+        SELECT department, city, count(*)::int AS n, max(updated_at) AS updated
+        FROM associations
+        WHERE department IN (${inList}) AND status = 'published'
+          AND city IS NOT NULL AND length(trim(city)) > 0
+        GROUP BY department, city
+        ORDER BY count(*) DESC, city ASC
+      `),
+    );
+    const seenByDept: Record<string, Set<string>> = {};
     const list: Commune[] = [];
     for (const r of rows.rows) {
+      const meta = SEO_DEPARTEMENTS[r.department];
+      if (!meta) continue;
       const display = cleanCity(r.city);
       let slug = slugify(display);
       if (!slug) continue;
-      if (seen.has(slug)) slug = `${slug}-${list.length}`; // collision (rare) -> on diversifie
+      const seen = (seenByDept[r.department] ??= new Set());
+      if (seen.has(slug)) slug = `${slug}-${list.length}`;
       seen.add(slug);
-      list.push({ city: r.city, display, slug, n: r.n, updated: isoDate(r.updated) });
+      list.push({ dept: r.department, deptSlug: meta.slug, city: r.city, display, slug, n: r.n, updated: isoDate(r.updated) });
     }
     this.cache = { at: Date.now(), list };
     return list;
@@ -106,6 +106,8 @@ ul.assos a{color:var(--accent);text-decoration:none;font-size:13px;font-weight:6
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
 .grid a{padding:9px 13px;border:1px solid var(--line);border-radius:10px;text-decoration:none;color:var(--ink);font-weight:600;font-size:14px;background:var(--soft)}
 .grid a:hover{border-color:var(--accent)}.grid .c{color:var(--muted);font-weight:500}
+.deps{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.deps a{font-size:13px;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px}
 footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}
 footer a{color:var(--muted)}
 </style>
@@ -116,18 +118,30 @@ footer a{color:var(--muted)}
   <a class="cta" href="/">Voir la carte interactive →</a>
 </header>
 ${o.body}
-<footer>Données issues du Répertoire National des Associations (RNA, data.gouv.fr), enrichies automatiquement par GemensKarte. · <a href="/vendee">Toutes les communes de Vendée</a> · <a href="/">Accueil</a></footer>
+<footer>Données issues du Répertoire National des Associations (RNA, data.gouv.fr), enrichies automatiquement par GemensKarte. · <a href="/">Accueil</a></footer>
 </div></body></html>`;
   }
 
-  /** Page d'une commune : /vendee/<slug>. Renvoie null si le slug n'existe pas. */
-  async communePage(slug: string): Promise<string | null> {
-    const c = (await this.communes()).find((x) => x.slug === slug);
+  /** Petite barre de liens vers les autres départements couverts (cross-linking crawl). */
+  private autresDepts(currentSlug?: string): string {
+    const links = Object.values(SEO_DEPARTEMENTS)
+      .filter((d) => d.slug !== currentSlug)
+      .map((d) => `<a href="/${d.slug}">${esc(d.nom)}</a>`)
+      .join("");
+    return `<div class="deps">${links}</div>`;
+  }
+
+  /** Page d'une commune : /<deptSlug>/<communeSlug>. null si introuvable. */
+  async communePage(deptSlug: string, communeSlug: string): Promise<string | null> {
+    const deptCode = SEO_CODE_BY_SLUG[deptSlug];
+    if (!deptCode) return null;
+    const c = (await this.allCommunes()).find((x) => x.dept === deptCode && x.slug === communeSlug);
     if (!c) return null;
+    const deptNom = SEO_DEPARTEMENTS[deptCode].nom;
     const rows = await this.db.execute<{ name: string; category_id: string; social: Record<string, string> | null; website: string | null }>(sql`
       SELECT name, category_id, social, website
       FROM associations
-      WHERE department = ${DEPT} AND status = 'published' AND city = ${c.city}
+      WHERE department = ${c.dept} AND status = 'published' AND city = ${c.city}
       ORDER BY name ASC
       LIMIT ${MAX_LISTE}
     `);
@@ -140,50 +154,56 @@ ${o.body}
     }).join("\n");
     const reste = c.n > items.length ? `<p class="lead">… et ${c.n - items.length} autres associations à ${esc(c.display)}, à découvrir sur la <a href="/">carte interactive</a>.</p>` : "";
 
-    const title = `Associations à ${c.display} (Vendée) — GemensKarte`;
-    const desc = `Les ${c.n} associations de ${c.display} (Vendée) : sport, culture, solidarité, environnement, éducation… Coordonnées et liens sur GemensKarte.`;
+    const title = `Associations à ${c.display} (${deptNom}) — GemensKarte`;
+    const desc = `Les ${c.n} associations de ${c.display} (${deptNom}) : sport, culture, solidarité, environnement, éducation… Coordonnées et liens sur GemensKarte.`;
     const jsonld = JSON.stringify({
       "@context": "https://schema.org", "@type": "ItemList",
-      name: `Associations à ${c.display} (Vendée)`, numberOfItems: c.n,
+      name: `Associations à ${c.display} (${deptNom})`, numberOfItems: c.n,
       itemListElement: items.slice(0, 100).map((a, i) => ({ "@type": "ListItem", position: i + 1, name: a.name })),
     });
     const body = `
-<h1>Associations à ${esc(c.display)} (Vendée)</h1>
-<p class="lead">${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} à ${esc(c.display)} — sport, culture, solidarité, environnement, éducation… Explorez-les sur la <a href="/">carte interactive de GemensKarte</a>.</p>
+<h1>Associations à ${esc(c.display)} (${esc(deptNom)})</h1>
+<p class="lead">${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} à ${esc(c.display)} — sport, culture, solidarité, environnement, éducation… Explorez-les sur la <a href="/">carte interactive de GemensKarte</a>. Voir <a href="/${c.deptSlug}">toutes les communes du ${esc(deptNom)}</a>.</p>
 <ul class="assos">
 ${lis}
 </ul>
 ${reste}`;
-    return this.doc({ title, desc, canonical: `${BASE}/vendee/${c.slug}`, jsonld, body });
+    return this.doc({ title, desc, canonical: `${BASE}/${c.deptSlug}/${c.slug}`, jsonld, body });
   }
 
-  /** Index des communes : /vendee. */
-  async indexPage(): Promise<string> {
-    const list = await this.communes();
-    const total = list.reduce((s, c) => s + c.n, 0);
-    const liens = list.map((c) =>
-      `  <a href="/vendee/${c.slug}">${esc(c.display)} <span class="c">${c.n}</span></a>`,
+  /** Index d'un département : /<deptSlug> (liste de ses communes). null si inconnu. */
+  async deptIndex(deptSlug: string): Promise<string | null> {
+    const deptCode = SEO_CODE_BY_SLUG[deptSlug];
+    if (!deptCode) return null;
+    const nom = SEO_DEPARTEMENTS[deptCode].nom;
+    const communes = (await this.allCommunes()).filter((c) => c.dept === deptCode);
+    const total = communes.reduce((s, c) => s + c.n, 0);
+    const liens = communes.map((c) =>
+      `  <a href="/${c.deptSlug}/${c.slug}">${esc(c.display)} <span class="c">${c.n}</span></a>`,
     ).join("\n");
-    const title = "Associations de Vendée par commune — GemensKarte";
-    const desc = `Toutes les communes de Vendée (${list.length}) et leurs associations (${total} au total) : sport, culture, solidarité… Trouvez les assos près de chez vous.`;
+    const title = `Associations du ${nom} par commune — GemensKarte`;
+    const desc = `Toutes les communes du ${nom} (${communes.length}) et leurs associations (${total} au total) : trouvez les assos près de chez vous.`;
     const body = `
-<h1>Associations de Vendée, commune par commune</h1>
-<p class="lead">${list.length} communes · ${total} associations référencées en Vendée. Choisissez une commune, ou explorez la <a href="/">carte interactive</a>.</p>
+<h1>Associations du ${esc(nom)}, commune par commune</h1>
+<p class="lead">${communes.length} communes · ${total} associations référencées. Choisissez une commune, ou explorez la <a href="/">carte interactive</a>.</p>
 <div class="grid">
 ${liens}
-</div>`;
-    return this.doc({ title, desc, canonical: `${BASE}/vendee`, body });
+</div>
+<p class="lead" style="margin-top:32px">Autres territoires couverts :</p>
+${this.autresDepts(deptSlug)}`;
+    return this.doc({ title, desc, canonical: `${BASE}/${deptSlug}`, body });
   }
 
-  /** Sitemap XML : accueil + index Vendée + une URL par commune. */
+  /** Sitemap XML : accueil + chaque index département + chaque commune (avec lastmod). */
   async sitemap(): Promise<string> {
-    const list = await this.communes();
-    // lastmod global = la commune la plus récemment modifiée (dates ISO -> comparaison texte OK).
-    const globalMod = list.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
+    const communes = await this.allCommunes();
+    const globalMod = communes.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
     const urls = [
       `<url><loc>${BASE}/</loc><lastmod>${globalMod}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-      `<url><loc>${BASE}/vendee</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
-      ...list.map((c) => `<url><loc>${BASE}/vendee/${c.slug}</loc><lastmod>${c.updated}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`),
+      ...Object.values(SEO_DEPARTEMENTS).map((d) =>
+        `<url><loc>${BASE}/${d.slug}</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`),
+      ...communes.map((c) =>
+        `<url><loc>${BASE}/${c.deptSlug}/${c.slug}</loc><lastmod>${c.updated}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`),
     ];
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
   }
