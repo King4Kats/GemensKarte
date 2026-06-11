@@ -180,6 +180,16 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
               {dept.nom}
             </span>
           )}
+          {/* Code source (lien + logo GitHub) — projet à code ouvert. */}
+          <a href="https://github.com/King4Kats/GemensKarte" target="_blank" rel="noopener noreferrer"
+            aria-label="Code source sur GitHub" title="Code source sur GitHub"
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center",
+              width: 34, height: 34, borderRadius: 10, color: "var(--ink)",
+              border: "1.5px solid var(--hairline)", background: "var(--bg)", flexShrink: 0 }}>
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 .5C5.37.5 0 5.78 0 12.29c0 5.2 3.44 9.6 8.21 11.16.6.11.82-.25.82-.56 0-.28-.01-1.02-.02-2-3.34.71-4.04-1.58-4.04-1.58-.55-1.36-1.33-1.73-1.33-1.73-1.09-.73.08-.72.08-.72 1.2.08 1.83 1.21 1.83 1.21 1.07 1.8 2.81 1.28 3.5.98.11-.76.42-1.28.76-1.57-2.67-.3-5.47-1.31-5.47-5.84 0-1.29.47-2.34 1.24-3.17-.12-.3-.54-1.52.12-3.16 0 0 1.01-.32 3.3 1.21.96-.26 1.98-.39 3-.4 1.02.01 2.04.14 3 .4 2.29-1.53 3.3-1.21 3.3-1.21.66 1.64.24 2.86.12 3.16.77.83 1.24 1.88 1.24 3.17 0 4.54-2.81 5.54-5.49 5.83.43.36.81 1.09.81 2.2 0 1.59-.01 2.87-.01 3.26 0 .31.22.68.83.56C20.56 21.88 24 17.48 24 12.29 24 5.78 18.63.5 12 .5z"/>
+            </svg>
+          </a>
         </div>
         {/* Desktop : barre de navigation normale. Mobile : un bouton burger qui
             ouvre un menu déroulant avec EXACTEMENT les mêmes liens. */}
@@ -821,6 +831,13 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         </a>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           Données&nbsp;: RNA © Ministère de l'Intérieur · Cartographie&nbsp;: OpenStreetMap
+        </p>
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+          Réalisé par{" "}
+          <a href="https://flavienauvray.me/" target="_blank" rel="noopener noreferrer"
+            style={{ color: "var(--ink)", textDecoration: "none", fontWeight: 700, fontFamily: "var(--font)" }}>
+            Flavien Auvray
+          </a>
         </p>
       </footer>
     </div>
