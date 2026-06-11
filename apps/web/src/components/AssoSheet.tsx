@@ -136,8 +136,10 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
       <div
         onClick={onClose}
         style={{
+          // Voile transparent (pas de fond sombre) : un clic dessus ferme la fiche,
+          // mais la carte reste visible derrière pour voir le zoom.
           position: "absolute", inset: 0, zIndex: 1200,
-          background: "rgba(20,20,27,.28)", backdropFilter: "blur(2px)",
+          background: "transparent",
           opacity: asso ? 1 : 0, pointerEvents: asso ? "auto" : "none",
           transition: "opacity .32s ease",
         }}
@@ -145,10 +147,11 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
       <aside
         className="cm-scroll"
         style={{
-          position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 1201,
+          // La fiche s'ouvre à GAUCHE (le panneau de résultats de recherche est à droite).
+          position: "absolute", top: 0, left: 0, bottom: 0, zIndex: 1201,
           width: "min(440px, 92vw)", background: "var(--bg)",
-          boxShadow: "var(--shadow-sheet)", overflowY: "auto",
-          transform: asso ? "translateX(0)" : "translateX(102%)",
+          boxShadow: "24px 0 60px rgba(20,20,27,.10)", overflowY: "auto",
+          transform: asso ? "translateX(0)" : "translateX(-102%)",
           transition: "transform .4s cubic-bezier(.5,.1,.25,1)",
         }}
       >

@@ -81,6 +81,8 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const [points, setPoints] = useState<GeoPoint[]>([]);                         // tous les points géographiques des assos
   const [openAsso, setOpenAsso] = useState<Association | null>(null);           // asso dont la fiche est ouverte
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);             // propositions auto de la recherche
+  const [searchOpen, setSearchOpen] = useState(false);                          // panneau de résultats (à droite) ouvert ?
+  const [searchResults, setSearchResults] = useState<Suggestion[]>([]);         // résultats complets affichés dans le panneau
 
   // Références (valeurs gardées entre les rendus, sans redessiner l'écran) :
   const mapRef = useRef<L.Map | null>(null);                                    // l'objet carte Leaflet
@@ -147,9 +149,21 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   // Touche Entrée / bouton "Go" : si le texte correspond à une ville, on zoome dessus ;
   // sinon on ouvre la 1re association proposée.
   const onSearchSubmit = useCallback(() => {
-    if (cityMatches.length > 0) { zoomToCity(cityMatches[0].name); setOpenAsso(null); }
-    else if (suggestions[0]) void openById(suggestions[0].id);
-  }, [cityMatches, zoomToCity, suggestions, openById]);
+    if (cityMatches.length > 0) { zoomToCity(cityMatches[0].name); setOpenAsso(null); setSearchOpen(false); }
+    else if (q.trim()) { setSearchOpen(true); } // ouvre le panneau de résultats complet (à droite)
+  }, [cityMatches, zoomToCity, q]);
+
+  // Quand le panneau de résultats est ouvert, on récupère la liste COMPLÈTE des assos
+  // qui matchent (nom OU descriptif RNA, via Meili), jusqu'à 50 — d'où plus que les
+  // seuls titres contrairement à la petite liste d'autocomplétion.
+  useEffect(() => {
+    const t = q.trim();
+    if (!searchOpen || !t) { setSearchResults([]); return; }
+    const id = setTimeout(() => {
+      api.suggest(t, 50, dept?.code).then(setSearchResults).catch(() => setSearchResults([]));
+    }, 160);
+    return () => clearTimeout(id);
+  }, [searchOpen, q, dept?.code]);
 
   /* ---- suggestions (Meili) ---- */
   // À chaque frappe, on demande au moteur de recherche (Meilisearch) jusqu'à 6 propositions.
@@ -309,6 +323,57 @@ export function MapView({ initial, onHome, onPortal, dept }: {
         <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
           <div ref={mapElRef} style={{ position: "absolute", inset: 0 }} />
           <AssoSheet asso={openAsso} onClose={() => setOpenAsso(null)} />
+
+          {/* Panneau de résultats de recherche (à DROITE, fermable). S'ouvre via Entrée
+              ou le bouton "Go". Liste complète (nom OU descriptif RNA) ; cliquer un
+              résultat zoome la carte et ouvre la fiche (à gauche). */}
+          {searchOpen && (
+            <aside className="cm-scroll" style={{
+              position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 1201,
+              width: "min(360px, 92vw)", background: "var(--bg)",
+              boxShadow: "-24px 0 60px rgba(20,20,27,.10)", overflowY: "auto",
+            }}>
+              <div style={{ position: "sticky", top: 0, background: "var(--bg)", borderBottom: "1px solid var(--hairline)",
+                padding: "13px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, zIndex: 1 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    Résultats « {q.trim()} »
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600 }}>
+                    {searchResults.length} association{searchResults.length > 1 ? "s" : ""}
+                  </div>
+                </div>
+                <button onClick={() => setSearchOpen(false)} aria-label="Fermer les résultats"
+                  style={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: "50%", border: 0, background: "var(--bg-sunk)", color: "var(--ink)", cursor: "pointer", flexShrink: 0 }}>
+                  <Icon name="close" size={17} stroke={2.4} />
+                </button>
+              </div>
+              <div style={{ padding: 8 }}>
+                {searchResults.length === 0 ? (
+                  <div style={{ padding: "24px 14px", textAlign: "center", color: "var(--muted)", fontSize: 14, fontWeight: 600 }}>Aucun résultat.</div>
+                ) : searchResults.map((s) => {
+                  const c = catById(s.categoryId);
+                  const active = openAsso?.id === s.id;
+                  return (
+                    <button key={s.id} onClick={() => void openById(s.id)}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+                        border: 0, cursor: "pointer", background: active ? "var(--bg-sunk)" : "transparent",
+                        borderRadius: 12, padding: "10px 12px", transition: "background .12s",
+                      }}
+                      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--bg-soft)"; }}
+                      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", flexShrink: 0, background: c.color, boxShadow: `0 0 0 4px color-mix(in srgb, ${c.color} 18%, transparent)` }} />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: "block", fontWeight: 700, fontSize: 14, color: "var(--ink)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
+                        <span style={{ display: "block", fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{c.label}{s.city ? ` · ${s.city}` : ""}</span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </aside>
+          )}
         </div>
       </div>
     </div>
