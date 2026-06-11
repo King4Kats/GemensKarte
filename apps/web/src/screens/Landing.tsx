@@ -17,7 +17,7 @@ import { STRIPE_DON_URL } from "../lib/config";
 import { useIsMobile } from "../lib/useIsMobile";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
-import { REGION_COLOR, READY_CODES, type DeptMeta } from "../data/departements";
+import { REGION_COLOR, COVERED_CODES, type DeptMeta } from "../data/departements";
 
 // Options passées quand on quitte l'accueil pour aller explorer la carte
 // (recherche tapée, catégorie choisie, fiche à ouvrir).
@@ -153,7 +153,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   // animé ; tant que la donnée n'est pas arrivée, on affiche "…".
   const stats = [
     { n: total !== null ? animCount.toLocaleString("fr-FR") : "…", l: "associations" },
-    { n: String(READY_CODES.length), l: READY_CODES.length > 1 ? "territoires" : "territoire" },
+    { n: String(COVERED_CODES.length), l: COVERED_CODES.length > 1 ? "territoires" : "territoire" },
     { n: "7", l: "univers" },
     { n: "100%", l: "open-source" },
   ];
@@ -649,6 +649,15 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             Toutes les données proviennent du <strong>Répertoire National des Associations</strong> (data.gouv.fr),
             enrichies automatiquement par nos scripts. Voici l'état exact en temps réel.
           </p>
+
+          {/* Chiffre phare : nombre TOTAL d'associations recensées (national) —
+              ≈ le nombre de descriptifs RNA, + les ajouts manuels via "Référencer". */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap", margin: "0 0 44px" }}>
+            <span style={{ fontSize: "clamp(40px, 7vw, 64px)", fontWeight: 800, letterSpacing: "-0.04em", color: "var(--accent)", lineHeight: 1 }}>
+              {dataStats?.total != null ? dataStats.total.toLocaleString("fr-FR") : "…"}
+            </span>
+            <span style={{ fontSize: 17, fontWeight: 700, color: "var(--ink-2)" }}>associations recensées</span>
+          </div>
 
           {/* Si les stats sont chargées on affiche les cartes, sinon un message
               d'attente. Chaque carte montre un pourcentage et une barre. */}
