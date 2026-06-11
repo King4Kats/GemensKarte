@@ -122,5 +122,17 @@ jamais au châssis.** Accessibilité : couleur jamais seule (émoji + libellé),
 
 ---
 
-Projet associatif & open-source, fait avec ❤️ en Vendée. Données : RNA © Ministère de
-l'Intérieur · Agenda : OpenAgenda · Cartographie : OpenStreetMap. Contributions bienvenues 💚
+Projet associatif, à **code ouvert (non commercial)**, fait avec ❤️ en Vendée. Données : RNA ©
+Ministère de l'Intérieur · Agenda : OpenAgenda · Cartographie : OpenStreetMap. Contributions bienvenues 💚
+
+---
+
+## Licence
+
+Code sous **[PolyForm Noncommercial License 1.0.0](LICENSE)**.
+
+Tu peux l'**utiliser, le modifier et le partager librement** pour tout **usage non
+commercial** : particuliers, associations, recherche, enseignement, collectivités et
+organismes publics. Tout **usage commercial** nécessite un accord séparé avec l'auteur.
+
+Copyright 2026 Flavien Auvray — GemensKarte.
