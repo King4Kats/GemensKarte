@@ -81,8 +81,8 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const [points, setPoints] = useState<GeoPoint[]>([]);                         // tous les points géographiques des assos
   const [openAsso, setOpenAsso] = useState<Association | null>(null);           // asso dont la fiche est ouverte
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);             // propositions auto de la recherche
-  const [searchOpen, setSearchOpen] = useState(false);                          // panneau de résultats (à droite) ouvert ?
-  const [searchResults, setSearchResults] = useState<Suggestion[]>([]);         // résultats complets affichés dans le panneau
+  const [keywords, setKeywords] = useState<string[]>([]);                       // mots-clés actifs = filtre carte (croisés en ET)
+  const [kwIds, setKwIds] = useState<Record<string, string[]>>({});             // mot-clé (minuscule) -> ids des assos qui matchent
 
   // Références (valeurs gardées entre les rendus, sans redessiner l'écran) :
   const mapRef = useRef<L.Map | null>(null);                                    // l'objet carte Leaflet
@@ -148,22 +148,43 @@ export function MapView({ initial, onHome, onPortal, dept }: {
 
   // Touche Entrée / bouton "Go" : si le texte correspond à une ville, on zoome dessus ;
   // sinon on ouvre la 1re association proposée.
-  const onSearchSubmit = useCallback(() => {
-    if (cityMatches.length > 0) { zoomToCity(cityMatches[0].name); setOpenAsso(null); setSearchOpen(false); }
-    else if (q.trim()) { setSearchOpen(true); } // ouvre le panneau de résultats complet (à droite)
-  }, [cityMatches, zoomToCity, q]);
+  /* ---- filtre par MOTS-CLÉS (chips) : masque les points dont le titre/descriptif
+          ne contient pas le(s) mot(s). Plusieurs mots = croisement en ET. ---- */
+  // Ajoute le texte tapé comme mot-clé, et récupère en fond les ids des assos qui
+  // matchent (nom OU descriptif RNA, via Meili → gère synonymes "music"/"musique").
+  const addKeyword = useCallback((raw: string) => {
+    const w = raw.trim();
+    if (!w) return;
+    const key = w.toLowerCase();
+    setKeywords((ks) => (ks.some((k) => k.toLowerCase() === key) ? ks : [...ks, w]));
+    setQ("");
+    if (!(key in kwIds)) {
+      api.matchIds(w, dept?.code).then((ids) => setKwIds((m) => ({ ...m, [key]: ids }))).catch(() => {});
+    }
+  }, [kwIds, dept?.code]);
 
-  // Quand le panneau de résultats est ouvert, on récupère la liste COMPLÈTE des assos
-  // qui matchent (nom OU descriptif RNA, via Meili), jusqu'à 50 — d'où plus que les
-  // seuls titres contrairement à la petite liste d'autocomplétion.
-  useEffect(() => {
-    const t = q.trim();
-    if (!searchOpen || !t) { setSearchResults([]); return; }
-    const id = setTimeout(() => {
-      api.suggest(t, 50, dept?.code).then(setSearchResults).catch(() => setSearchResults([]));
-    }, 160);
-    return () => clearTimeout(id);
-  }, [searchOpen, q, dept?.code]);
+  const removeKeyword = useCallback((w: string) => {
+    setKeywords((ks) => ks.filter((k) => k !== w));
+  }, []);
+
+  // Entrée / "Go" : si le texte est une ville -> zoom ; sinon -> ajoute un mot-clé de filtre.
+  const onSearchSubmit = useCallback(() => {
+    if (cityMatches.length > 0) { zoomToCity(cityMatches[0].name); setOpenAsso(null); }
+    else if (q.trim()) addKeyword(q);
+  }, [cityMatches, zoomToCity, q, addKeyword]);
+
+  // Intersection des ids de tous les mots-clés (= croisement ET). null = aucun filtre mot-clé.
+  const keywordIds = useMemo(() => {
+    if (keywords.length === 0) return null;
+    let acc: Set<string> | null = null;
+    for (const w of keywords) {
+      const ids = kwIds[w.toLowerCase()];
+      if (!ids) continue; // pas encore chargé : on l'ignore (le filtre s'affine à l'arrivée)
+      const s = new Set(ids);
+      acc = acc === null ? s : new Set([...acc].filter((id) => s.has(id)));
+    }
+    return acc;
+  }, [keywords, kwIds]);
 
   /* ---- suggestions (Meili) ---- */
   // À chaque frappe, on demande au moteur de recherche (Meilisearch) jusqu'à 6 propositions.
@@ -180,9 +201,11 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   // On ne garde que les points dont la catégorie est cochée. Si aucun filtre, on garde tout.
   // useMemo = on recalcule seulement quand `points` ou `cats` changent (évite des recalculs inutiles).
   const filteredPoints = useMemo(() => {
-    if (cats.length === 0) return points;
-    return points.filter((p) => cats.includes(p.categoryId));
-  }, [points, cats]);
+    return points.filter((p) =>
+      (cats.length === 0 || cats.includes(p.categoryId)) &&
+      (keywordIds === null || keywordIds.has(p.id))
+    );
+  }, [points, cats, keywordIds]);
 
   /* ---- init Leaflet (une fois) ---- */
   // Crée la carte au premier affichage : centre sur la Vendée, choisit le fond de carte
@@ -317,63 +340,36 @@ export function MapView({ initial, onHome, onPortal, dept }: {
 
       <div className="cm-scroll" style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px clamp(16px, 3vw, 26px)", borderBottom: "1px solid var(--hairline)", flexShrink: 0, overflowX: "auto" }}>
         <FilterBar active={cats} onToggle={toggleCat} onClear={() => setCats([])} />
+        {/* Mots-clés actifs (chips) : chacun filtre la carte ; plusieurs = croisement (ET).
+            La croix retire le mot. Le compteur = nb d'assos qui contiennent ce mot. */}
+        {keywords.length > 0 && (
+          <>
+            <span style={{ width: 1, height: 22, background: "var(--hairline)", flexShrink: 0 }} />
+            {keywords.map((w) => {
+              const count = kwIds[w.toLowerCase()]?.length;
+              return (
+                <span key={w} style={{ display: "inline-flex", alignItems: "center", gap: 8, flexShrink: 0,
+                  height: 34, padding: "0 7px 0 13px", borderRadius: "var(--radius-pill)",
+                  background: "color-mix(in srgb, var(--accent) 12%, white)", color: "var(--accent)",
+                  border: "1.5px solid color-mix(in srgb, var(--accent) 35%, white)",
+                  fontFamily: "var(--font)", fontWeight: 700, fontSize: 13, letterSpacing: "-0.01em" }}>
+                  {w}{count !== undefined ? ` · ${count}` : "…"}
+                  <button onClick={() => removeKeyword(w)} aria-label={`Retirer ${w}`}
+                    style={{ display: "grid", placeItems: "center", width: 19, height: 19, borderRadius: "50%",
+                      border: 0, background: "color-mix(in srgb, var(--accent) 20%, white)", color: "var(--accent)", cursor: "pointer", flexShrink: 0 }}>
+                    <Icon name="close" size={11} stroke={2.6} />
+                  </button>
+                </span>
+              );
+            })}
+          </>
+        )}
       </div>
 
       <div style={{ flex: 1, display: "flex", minHeight: 0, position: "relative" }}>
         <div style={{ flex: 1, position: "relative", minWidth: 0 }}>
           <div ref={mapElRef} style={{ position: "absolute", inset: 0 }} />
           <AssoSheet asso={openAsso} onClose={() => setOpenAsso(null)} />
-
-          {/* Panneau de résultats de recherche (à DROITE, fermable). S'ouvre via Entrée
-              ou le bouton "Go". Liste complète (nom OU descriptif RNA) ; cliquer un
-              résultat zoome la carte et ouvre la fiche (à gauche). */}
-          {searchOpen && (
-            <aside className="cm-scroll" style={{
-              position: "absolute", top: 0, right: 0, bottom: 0, zIndex: 1201,
-              width: "min(360px, 92vw)", background: "var(--bg)",
-              boxShadow: "-24px 0 60px rgba(20,20,27,.10)", overflowY: "auto",
-            }}>
-              <div style={{ position: "sticky", top: 0, background: "var(--bg)", borderBottom: "1px solid var(--hairline)",
-                padding: "13px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, zIndex: 1 }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    Résultats « {q.trim()} »
-                  </div>
-                  <div style={{ fontSize: 12.5, color: "var(--muted)", fontWeight: 600 }}>
-                    {searchResults.length} association{searchResults.length > 1 ? "s" : ""}
-                  </div>
-                </div>
-                <button onClick={() => setSearchOpen(false)} aria-label="Fermer les résultats"
-                  style={{ display: "grid", placeItems: "center", width: 34, height: 34, borderRadius: "50%", border: 0, background: "var(--bg-sunk)", color: "var(--ink)", cursor: "pointer", flexShrink: 0 }}>
-                  <Icon name="close" size={17} stroke={2.4} />
-                </button>
-              </div>
-              <div style={{ padding: 8 }}>
-                {searchResults.length === 0 ? (
-                  <div style={{ padding: "24px 14px", textAlign: "center", color: "var(--muted)", fontSize: 14, fontWeight: 600 }}>Aucun résultat.</div>
-                ) : searchResults.map((s) => {
-                  const c = catById(s.categoryId);
-                  const active = openAsso?.id === s.id;
-                  return (
-                    <button key={s.id} onClick={() => void openById(s.id)}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
-                        border: 0, cursor: "pointer", background: active ? "var(--bg-sunk)" : "transparent",
-                        borderRadius: 12, padding: "10px 12px", transition: "background .12s",
-                      }}
-                      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--bg-soft)"; }}
-                      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "transparent"; }}>
-                      <span style={{ width: 10, height: 10, borderRadius: "50%", flexShrink: 0, background: c.color, boxShadow: `0 0 0 4px color-mix(in srgb, ${c.color} 18%, transparent)` }} />
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        <span style={{ display: "block", fontWeight: 700, fontSize: 14, color: "var(--ink)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</span>
-                        <span style={{ display: "block", fontSize: 12, color: "var(--muted)", fontWeight: 600 }}>{c.label}{s.city ? ` · ${s.city}` : ""}</span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </aside>
-          )}
         </div>
       </div>
     </div>

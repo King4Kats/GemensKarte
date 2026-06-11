@@ -4,7 +4,7 @@
  * Ici une seule route : l'autocomplétion de la barre de recherche.
  */
 import { Controller, Get, Query } from "@nestjs/common";
-import { SuggestQuery, type Suggestion } from "@gemenskarte/shared";
+import { SuggestQuery, MatchQuery, type Suggestion } from "@gemenskarte/shared";
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { SearchService } from "./search.service";
 
@@ -20,5 +20,14 @@ export class SearchController {
     @Query(new ZodValidationPipe(SuggestQuery)) query: SuggestQuery,
   ): Promise<Suggestion[]> {
     return this.search.suggest(query.q, query.limit, query.department);
+  }
+
+  /** GET /api/search/match?q=music&department=85 — tous les ids d'assos qui matchent
+   *  un mot-clé (nom OU descriptif), pour filtrer les points de la carte. */
+  @Get("match")
+  match(
+    @Query(new ZodValidationPipe(MatchQuery)) query: MatchQuery,
+  ): Promise<string[]> {
+    return this.search.matchIds(query.q, query.department);
   }
 }

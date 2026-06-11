@@ -117,6 +117,12 @@ export const api = {
     getJSON<Suggestion[]>(
       `/search/suggest?q=${encodeURIComponent(q)}&limit=${limit}${department ? `&department=${department}` : ""}`,
     ),
+
+  // Filtre carte : tous les ids d'assos qui contiennent le mot-clé (nom OU descriptif).
+  matchIds: (q: string, department?: string) =>
+    getJSON<string[]>(
+      `/search/match?q=${encodeURIComponent(q)}${department ? `&department=${department}` : ""}`,
+    ),
 };
 
 /* ---- Helpers de présentation (l'API RNA n'a pas tous les champs riches) ---- */
