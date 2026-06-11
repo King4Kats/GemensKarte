@@ -125,8 +125,15 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   // d'associations et les statistiques détaillées (pour la section "données").
   useEffect(() => {
     api.list({ limit: 1 }).then((r) => setTotal(r.total)).catch(() => setTotal(null));
-    (api.fetchStats as () => Promise<any>)().then(setDataStats).catch(() => {});
-    api.fetchProgress().then(setProgress).catch(() => {});
+    // Stats + avancement : on charge tout de suite, puis on rafraîchit toutes les 60s
+    // pour voir les chiffres grimper en direct au fil des passes (sans recharger la page).
+    const load = () => {
+      (api.fetchStats as () => Promise<any>)().then(setDataStats).catch(() => {});
+      api.fetchProgress().then(setProgress).catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60000);
+    return () => clearInterval(id);
   }, []);
 
   // Suggestions de recherche en direct pendant la frappe.

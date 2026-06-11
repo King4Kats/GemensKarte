@@ -81,8 +81,10 @@ export class StatsService {
       parts.push(`count(*) FILTER (WHERE social ? '${p.col}')::int AS ${p.key}_val`);
     }
     parts.push("count(*)::int AS total");
+    // Scopé au territoire en cours (ex. Vendée=85) : le suivi reste juste même quand
+    // d'autres territoires seront ajoutés en base. (La transparence, elle, reste nationale.)
     const rows = await this.db.execute<Record<string, number>>(
-      sql.raw(`SELECT ${parts.join(", ")} FROM associations`),
+      sql.raw(`SELECT ${parts.join(", ")} FROM associations WHERE department = '${TERRITOIRE_DEPT}'`),
     );
     const d = rows.rows[0]!;
     return {
@@ -109,6 +111,7 @@ export class StatsService {
 // Territoire en cours d'enrichissement + prochain prévu (affichés sur l'accueil).
 // À changer ici quand on bascule de territoire.
 const TERRITOIRE_EN_COURS = "Vendée";
+const TERRITOIRE_DEPT = "85";        // département du territoire en cours (scope du suivi)
 const PROCHAIN_TERRITOIRE = "Lot";
 
 // Plateformes suivies par les passes ciblées (mêmes marqueurs/conditions que
