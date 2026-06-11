@@ -61,7 +61,64 @@ export class StatsService {
       ficheVide:        { n: total - r.avec_social, pct: pct(total - r.avec_social, total) },
     };
   }
+
+  // Avancement des passes ciblées par plateforme (même calcul que progress.py) :
+  // scannées / restantes / validées / %, pour l'afficher en direct sur l'accueil.
+  async getProgress() {
+    const parts: string[] = [];
+    for (const p of PLATEFORMES) {
+      // "restantes" = exactement les conditions de fetch_pending de discover_targeted.py.
+      const rest = [
+        "location IS NOT NULL",
+        `NOT (COALESCE(social,'{}'::jsonb) ? '${p.col}')`,
+        `(meta ? '${p.marker}') IS NOT TRUE`,
+      ];
+      if (p.social) {
+        rest.push(`NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"${p.key}"}]'::jsonb)`);
+      }
+      parts.push(`count(*) FILTER (WHERE meta ? '${p.marker}')::int AS ${p.key}_scan`);
+      parts.push(`count(*) FILTER (WHERE ${rest.join(" AND ")})::int AS ${p.key}_rest`);
+      parts.push(`count(*) FILTER (WHERE social ? '${p.col}')::int AS ${p.key}_val`);
+    }
+    parts.push("count(*)::int AS total");
+    const rows = await this.db.execute<Record<string, number>>(
+      sql.raw(`SELECT ${parts.join(", ")} FROM associations`),
+    );
+    const d = rows.rows[0]!;
+    return {
+      territory: TERRITOIRE_EN_COURS,
+      next: PROCHAIN_TERRITOIRE,
+      total: d.total,
+      platforms: PLATEFORMES.map((p) => {
+        const scanned = d[`${p.key}_scan`];
+        const remaining = d[`${p.key}_rest`];
+        const denom = scanned + remaining;
+        return {
+          key: p.key,
+          label: p.label,
+          scanned,
+          remaining,
+          validated: d[`${p.key}_val`],
+          pct: denom ? Math.round((scanned / denom) * 1000) / 10 : 100,
+        };
+      }),
+    };
+  }
 }
+
+// Territoire en cours d'enrichissement + prochain prévu (affichés sur l'accueil).
+// À changer ici quand on bascule de territoire.
+const TERRITOIRE_EN_COURS = "Vendée";
+const PROCHAIN_TERRITOIRE = "Lot";
+
+// Plateformes suivies par les passes ciblées (mêmes marqueurs/conditions que
+// discover_targeted.py et progress.py). `social: true` = passe réseau social.
+const PLATEFORMES = [
+  { key: "instagram", label: "Instagram", col: "instagram", marker: "igTargetedAt", social: true },
+  { key: "facebook", label: "Facebook", col: "facebook", marker: "fbTargetedAt", social: true },
+  { key: "helloasso", label: "HelloAsso", col: "helloasso", marker: "helloassoCheckedAt", social: true },
+  { key: "website", label: "Site web", col: "website", marker: "webTargetedAt", social: false },
+] as const;
 
 // Calcule un pourcentage arrondi à un chiffre après la virgule (ex: 42.7).
 // Protège contre la division par zéro (si aucune association, on renvoie 0).

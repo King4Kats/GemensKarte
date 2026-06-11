@@ -7,7 +7,7 @@
  * avec des styles écrits directement dans le code (style inline).
  */
 import { useEffect, useRef, useState } from "react";
-import { api, type Suggestion } from "../lib/api";
+import { api, type Suggestion, type ProgressData } from "../lib/api";
 import { CATEGORIES, catById } from "../lib/categories";
 import { Logo } from "../components/Logo";
 import { SearchBar } from "../components/SearchBar";
@@ -95,6 +95,11 @@ function CatChip({ cat, onClick, delay }: { cat: string; onClick: (c: string) =>
 
 const navLink = { background: "transparent", color: "var(--ink)", fontWeight: 700 } as const;
 
+// Couleur de la barre de progression par réseau (section "enrichissement en direct").
+const PROG_COLOR: Record<string, string> = {
+  instagram: "#EC2D8A", facebook: "#1877f2", helloasso: "#f5a623", website: "#7b3ff2",
+};
+
 // ── Landing ─────────────────────────────────────────────────────────────────
 // Composant principal de la page d'accueil.
 // Les `props` sont des fonctions fournies par le parent : onSelect (un
@@ -113,6 +118,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [dataStats, setDataStats] = useState<Record<string, { n: number; pct: number }> & { total?: number } | null>(null);
+  const [progress, setProgress] = useState<ProgressData | null>(null); // avancement des passes
   const animCount = useCountUp(total);
 
   // Au premier affichage de la page : on demande à l'API le nombre total
@@ -120,6 +126,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   useEffect(() => {
     api.list({ limit: 1 }).then((r) => setTotal(r.total)).catch(() => setTotal(null));
     (api.fetchStats as () => Promise<any>)().then(setDataStats).catch(() => {});
+    api.fetchProgress().then(setProgress).catch(() => {});
   }, []);
 
   // Suggestions de recherche en direct pendant la frappe.
@@ -439,8 +446,41 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             ))}
           </div>
 
-          {/* Bloc "note de qualité par fiche" retiré : le badge n'est plus affiché
-              au public, donc on n'explique plus la notation A/B/C/D ici. */}
+          {/* Avancement EN DIRECT des passes d'enrichissement, par réseau social. */}
+          {progress && (
+            <div style={{ marginTop: 56, borderRadius: 22, background: "var(--bg-soft)", padding: "clamp(24px, 4vw, 40px)" }}>
+              <div style={{ textAlign: "center", maxWidth: 600, margin: "0 auto 30px" }}>
+                <h3 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.02em", color: "var(--ink)", margin: "0 0 8px" }}>
+                  Enrichissement en direct — {progress.territory}
+                </h3>
+                <p style={{ fontSize: 14.5, lineHeight: 1.6, color: "var(--ink-2)", margin: 0 }}>
+                  Où en sont les scripts, réseau par réseau. Prochain territoire prévu :{" "}
+                  <strong style={{ color: "var(--ink)" }}>{progress.next}</strong>.
+                </p>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 640, margin: "0 auto" }}>
+                {progress.platforms.map((p) => {
+                  const color = PROG_COLOR[p.key] ?? "var(--accent)";
+                  return (
+                    <div key={p.key}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7, gap: 10 }}>
+                        <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>{p.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+                          <span style={{ color }}>{p.validated.toLocaleString("fr-FR")}</span> trouvés · {p.pct}% balayé
+                        </span>
+                      </div>
+                      <div style={{ height: 10, borderRadius: 999, background: "var(--bg-sunk)", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${Math.max(p.pct, 1.5)}%`, background: color, borderRadius: 999, transition: "width .8s ease" }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", textAlign: "center", margin: "24px 0 0", fontStyle: "italic" }}>
+                Le balayage progresse tout seul ; les liens trouvés sont vérifiés par l'IA avant d'apparaître.
+              </p>
+            </div>
+          )}
         </div>
       </section>
 
