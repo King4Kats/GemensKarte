@@ -33,8 +33,13 @@ function slugify(s: string): string {
     .toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+/** Convertit une date (Date ou texte) en AAAA-MM-JJ pour le <lastmod> du sitemap. */
+function isoDate(v: unknown): string {
+  const d = v instanceof Date ? v : new Date(String(v ?? ""));
+  return isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
+}
 
-interface Commune { city: string; display: string; slug: string; n: number; }
+interface Commune { city: string; display: string; slug: string; n: number; updated: string; }
 
 @Injectable()
 export class SeoService {
@@ -46,8 +51,8 @@ export class SeoService {
 
   private async communes(): Promise<Commune[]> {
     if (this.cache && Date.now() - this.cache.at < 30 * 60 * 1000) return this.cache.list;
-    const rows = await this.db.execute<{ city: string; n: number }>(sql`
-      SELECT city, count(*)::int AS n
+    const rows = await this.db.execute<{ city: string; n: number; updated: unknown }>(sql`
+      SELECT city, count(*)::int AS n, max(updated_at) AS updated
       FROM associations
       WHERE department = ${DEPT} AND status = 'published'
         AND city IS NOT NULL AND length(trim(city)) > 0
@@ -62,7 +67,7 @@ export class SeoService {
       if (!slug) continue;
       if (seen.has(slug)) slug = `${slug}-${list.length}`; // collision (rare) -> on diversifie
       seen.add(slug);
-      list.push({ city: r.city, display, slug, n: r.n });
+      list.push({ city: r.city, display, slug, n: r.n, updated: isoDate(r.updated) });
     }
     this.cache = { at: Date.now(), list };
     return list;
@@ -173,10 +178,12 @@ ${liens}
   /** Sitemap XML : accueil + index Vendée + une URL par commune. */
   async sitemap(): Promise<string> {
     const list = await this.communes();
+    // lastmod global = la commune la plus récemment modifiée (dates ISO -> comparaison texte OK).
+    const globalMod = list.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
     const urls = [
-      `<url><loc>${BASE}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-      `<url><loc>${BASE}/vendee</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
-      ...list.map((c) => `<url><loc>${BASE}/vendee/${c.slug}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>`),
+      `<url><loc>${BASE}/</loc><lastmod>${globalMod}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${BASE}/vendee</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
+      ...list.map((c) => `<url><loc>${BASE}/vendee/${c.slug}</loc><lastmod>${c.updated}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`),
     ];
     return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
   }

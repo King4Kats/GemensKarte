@@ -194,8 +194,14 @@ def main() -> int:
                 }
 
             if not args.dry_run:
+                # On bumpe updated_at SEULEMENT si `social` change vraiment (un lien ajouté/retiré).
+                # -> fraîcheur HONNÊTE pour le <lastmod> du sitemap SEO : la date ne bouge que
+                #    quand le contenu de la fiche change réellement, pas à chaque passage d'apply.
+                changed = (json.dumps(r["social"], sort_keys=True)
+                           != json.dumps(asso.get("social_old") or {}, sort_keys=True))
+                set_upd = ", updated_at = now()" if changed else ""
                 conn.execute(
-                    "UPDATE associations SET social = %s::jsonb, meta = meta || %s::jsonb WHERE id = %s",
+                    f"UPDATE associations SET social = %s::jsonb, meta = meta || %s::jsonb{set_upd} WHERE id = %s",
                     (json.dumps(r["social"]), json.dumps(meta_patch), asso["id"]),
                 )
                 conn.commit()
