@@ -67,7 +67,7 @@ function Start-Tunnel($port) {
 $discBlock = {
   param($py, $dir, $dsn)
   Set-Location $dir; $env:DATABASE_URL = $dsn
-  while ($true) { & $py discover.py --limit 800 --sleep 1.2 *>> "$dir\_discLoop.log"; Start-Sleep -Seconds 15 }
+  while ($true) { & $py discover.py --limit 800 --sleep 1.2 --dept 85 *>> "$dir\_discLoop.log"; Start-Sleep -Seconds 15 }
 }
 $verBlock = {
   param($py, $dir, $dsn)
@@ -81,7 +81,7 @@ $verBlock = {
 $haBlock = {
   param($py, $dir, $dsn)
   Set-Location $dir; $env:DATABASE_URL = $dsn
-  while ($true) { & $py discover_targeted.py --platform helloasso --limit 150 --sleep 2.0 *>> "$dir\_haLoop.log"; Start-Sleep -Seconds 90 }
+  while ($true) { & $py discover_targeted.py --platform helloasso --limit 150 --sleep 2.0 --dept 85 *>> "$dir\_haLoop.log"; Start-Sleep -Seconds 90 }
 }
 # Passes de découverte CIBLÉES par plateforme (réseaux sociaux + site). Trickle TRÈS gentil :
 # elles PARTAGENT DDG avec discover/helloasso/fb->site, donc petits lots + longues pauses.
@@ -90,17 +90,17 @@ $haBlock = {
 $tgtFbBlock = {
   param($py, $dir, $dsn)
   Set-Location $dir; $env:DATABASE_URL = $dsn
-  while ($true) { & $py discover_targeted.py --platform facebook --limit 120 --sleep 2.0 *>> "$dir\_tgtFbLoop.log"; Start-Sleep -Seconds 60 }
+  while ($true) { & $py discover_targeted.py --platform facebook --limit 120 --sleep 2.0 --dept 85 *>> "$dir\_tgtFbLoop.log"; Start-Sleep -Seconds 60 }
 }
 $tgtIgBlock = {
   param($py, $dir, $dsn)
   Set-Location $dir; $env:DATABASE_URL = $dsn
-  while ($true) { & $py discover_targeted.py --platform instagram --limit 120 --sleep 2.0 *>> "$dir\_tgtIgLoop.log"; Start-Sleep -Seconds 60 }
+  while ($true) { & $py discover_targeted.py --platform instagram --limit 120 --sleep 2.0 --dept 85 *>> "$dir\_tgtIgLoop.log"; Start-Sleep -Seconds 60 }
 }
 $tgtWebBlock = {
   param($py, $dir, $dsn)
   Set-Location $dir; $env:DATABASE_URL = $dsn
-  while ($true) { & $py discover_targeted.py --platform website --limit 120 --sleep 2.0 *>> "$dir\_tgtWebLoop.log"; Start-Sleep -Seconds 60 }
+  while ($true) { & $py discover_targeted.py --platform website --limit 120 --sleep 2.0 --dept 85 *>> "$dir\_tgtWebLoop.log"; Start-Sleep -Seconds 60 }
 }
 # Liveness : balaie la DB par lots (HTTP parallèle, local). Gating interne (sain >14j / suspect >1j).
 $livBlock = {
