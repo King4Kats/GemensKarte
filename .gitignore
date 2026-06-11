@@ -34,3 +34,4 @@ __pycache__/
 # secret local du pipeline (mot de passe DB)
 .dbpass
 pipeline/.dbpass
+data/rna/rna_occitanie.csv.gz

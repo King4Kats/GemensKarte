@@ -88,6 +88,7 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const mapRef = useRef<L.Map | null>(null);                                    // l'objet carte Leaflet
   const mapElRef = useRef<HTMLDivElement>(null);                                // la balise HTML qui contient la carte
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);                 // le groupe de marqueurs clusterisés
+  const didFitRef = useRef(false);                                              // recentrage initial déjà fait ?
 
   /* ---- points carte (scopés au département du territoire) ---- */
   useEffect(() => {
@@ -295,7 +296,18 @@ export function MapView({ initial, onHome, onPortal, dept }: {
       return marker;
     });
     group.addLayers(markers);
-  }, [filteredPoints, openById]);
+
+    // Recentre la carte sur les points du territoire, UNE seule fois (sauf si on ouvre
+    // une asso précise depuis l'accueil). Permet d'arriver bien cadré sur n'importe quel
+    // département (ex. Occitanie au sud), pas seulement la Vendée.
+    if (!didFitRef.current && !initial.open && filteredPoints.length > 0) {
+      didFitRef.current = true;
+      map.fitBounds(
+        L.latLngBounds(filteredPoints.map((p) => [p.lat, p.lng] as [number, number])),
+        { padding: [40, 40], maxZoom: 12, animate: false },
+      );
+    }
+  }, [filteredPoints, openById, initial.open]);
 
   /* ---- ouverture initiale (depuis la landing) ---- */
   // Si la page d'accueil a demandé d'ouvrir une asso précise, on le fait une seule fois,
