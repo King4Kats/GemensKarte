@@ -39,17 +39,21 @@ async function geocodeCommunes(
   const todo = rows.filter((r) => r.city || r.postalCode);
   if (todo.length === 0) return out;
 
-  const header = "seq,address,postcode";
+  // Adresse = nom de la commune (sans rue) -> la BAN renvoie le point central de la
+  // commune. Même schéma de colonnes que l'import qui fonctionne (address + city).
+  const header = "seq,address,postcode,city";
   const body = todo
-    .map((r) => [r.seq, csvField(r.city || r.postalCode), csvField(r.postalCode)].join(","))
+    .map((r) =>
+      [r.seq, csvField(r.city || r.postalCode), csvField(r.postalCode), csvField(r.city)].join(","),
+    )
     .join("\n");
   const csv = `${header}\n${body}\n`;
 
   const form = new FormData();
   form.append("data", new Blob([csv], { type: "text/csv" }), "in.csv");
   form.append("columns", "address");
+  form.append("columns", "city");
   form.append("postcode", "postcode");
-  form.append("type", "municipality");
   form.append("result_columns", "latitude");
   form.append("result_columns", "longitude");
 
