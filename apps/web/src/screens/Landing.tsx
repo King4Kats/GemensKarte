@@ -510,7 +510,6 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
       {/* ── Section Espace Ressources ── */}
       <section style={{ position: "relative", overflow: "hidden", padding: "96px clamp(24px, 8vw, 120px)", background: "var(--bg-soft)" }}>
-        <ConfettiField count={14} seed={47} />
         <div style={{ position: "relative", zIndex: 1, maxWidth: 880, margin: "0 auto" }}>
 
           {/* En-tête */}
