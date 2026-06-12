@@ -1,318 +1,341 @@
-# 📖 COMMENT ÇA MARCHE — GemensKarte, expliqué simplement
+# 🛠️ Pipeline GemensKarte — comment ça marche
 
-
-## 1. C'est quoi GemensKarte, en une phrase ?
-
-Une **carte des associations** (18 554 en Vendée) où chaque asso a une fiche avec ses
-**liens** (site web, Facebook, Instagram, HelloAsso) et son
-**agenda à venir**. Le problème : les données de départ (le fichier officiel des assos, le
-« RNA ») sont **pauvres et parfois fausses**. Notre boulot : les **enrichir** et les
-**nettoyer** automatiquement.
+> Documentation technique du pipeline d'enrichissement, niveau **dev junior → junior++** :
+> chaque notion est expliquée *et* documentée précisément (clés JSON, conditions SQL, scoring).
+> Ce document décrit la **logique** du pipeline — pas une infrastructure de déploiement précise
+> (chacun héberge la base, les workers et le moteur LLM où il veut).
 
 ---
 
-## 2. Le schéma général (les 3 grosses briques)
+## Table des matières
 
-```
-   ┌─────────────────┐     ┌──────────────────────────┐     ┌──────────────────┐
-   │  1. LA BASE     │     │  2. LE PIPELINE          │     │  3. L'APPLI      │
-   │  (PostgreSQL)   │<───>│  (les scripts Python)    │     │  (site web)      │
-   │                 │     │                          │     │                  │
-   │  18 554 assos   │     │  Il LIT la base,         │     │  Il LIT la base  │
-   │  = la vérité    │     │  cherche des infos sur   │     │  et l'affiche.   │
-   │                 │     │  Internet, et ÉCRIT      │     │  Carte + fiches. │
-   │                 │     │  les résultats dedans.   │     │                  │
-   └─────────────────┘     └──────────────────────────┘     └──────────────────┘
-        ▲                          │      ▲                         │
-        │                          ▼      │                         ▼
-        │                   ┌──────────────────┐            ┌──────────────┐
-        └───────────────────│  Internet        │            │  Toi 👀      │
-          la base est        │  (DuckDuckGo,    │            │  (navigateur)│
-          modifiée par       │   sites web,     │            └──────────────┘
-          le pipeline        │   OpenAgenda...) │
-                             └──────────────────┘
-```
-
-**À retenir :** la BASE est la source de vérité. Le PIPELINE la remplit. L'APPLI l'affiche.
-Les trois sont séparés. Si le pipeline s'arrête, l'appli continue d'afficher la dernière version.
+1. [But & principe](#1-but--principe)
+2. [Glossaire express](#2-glossaire-express)
+3. [Les composants](#3-les-composants)
+4. [Le modèle de données (`associations`, `meta`, `social`)](#4-le-modèle-de-données)
+5. [Le pipeline, étape par étape](#5-le-pipeline-étape-par-étape)
+6. [Cycle de vie d'un lien candidat](#6-cycle-de-vie-dun-lien-candidat)
+7. [Le scoring (chiffres exacts)](#7-le-scoring-chiffres-exacts)
+8. [Anti-saturation des moteurs](#8-anti-saturation-des-moteurs)
+9. [Progression région par région](#9-progression-région-par-région)
+10. [Orchestration & reprise](#10-orchestration--reprise)
 
 ---
 
-## 3. Où tourne quoi ? (c'est important)
+## 1. But & principe
+
+Transformer le **RNA** (Répertoire National des Associations — fichier officiel, pauvre et
+parfois faux) en une **carte vivante** : chaque asso reçoit des **liens vérifiés** (site,
+Facebook, Instagram, HelloAsso) et un **agenda**.
+
+**Règle d'or : précision > rappel.** Une fiche vide vaut mieux qu'un faux lien. Rien n'est
+affiché sans **confirmation par un LLM**. La couverture se fait **région par région**.
+
+Trois composants **faiblement couplés** — si l'un s'arrête, les autres continuent :
 
 ```
-   TON PC WINDOWS (à la maison)              LE SERVEUR "your-server" (sur le réseau local)
-   ┌────────────────────────────┐           ┌──────────────────────────────────────┐
-   │  • Le PIPELINE (Python)    │           │  • La BASE PostgreSQL (conteneur     │
-   │  • Ollama (le cerveau LLM, │  tunnels  │    gk-db) — PAS exposée sur Internet │
-   │    sur ta carte graphique) │  SSH      │  • L'API (gk-api) qui sert les données│
-   │  • Le SUPERVISOR qui lance │ <───────> │  • Le SITE (gk-web) sur le port 8088 │
-   │    tout en boucle          │  (5433 +  │  • Meilisearch (le moteur de recherche)│
-   │                            │   5434)   │                                      │
-   └────────────────────────────┘           └──────────────────────────────────────┘
-```
-
-- Le pipeline tourne **chez toi** parce qu'il a besoin de ton **GPU** (pour le LLM) et de DDG.
-- La base n'est **pas accessible depuis Internet**. Pour que ton PC lui parle, on creuse un
-  **« tunnel SSH »** : un tuyau chiffré entre ton PC et le serveur.
-
-```bash
-# Un tunnel SSH, c'est juste ça : "tout ce qui arrive sur le port 5433 de mon PC,
-# envoie-le au port 5432 (Postgres) du conteneur sur le serveur".
-ssh -N -L 0.0.0.0:5433:DB_CONTAINER_IP:5432 your-server
-#       │   │         │           │      └── le serveur (raccourci SSH)
-#       │   │         │           └── le port Postgres DANS le conteneur
-#       │   │         └── l'IP du conteneur de la base sur le serveur
-#       │   └── le port sur MON PC (j'y connecte mes scripts)
-#       └── "-N" = juste le tunnel, n'ouvre pas de session shell
-```
-
-> 💡 **Pourquoi DEUX tunnels (5433 et 5434) ?** Un seul tuyau, ça bouchonne quand 11 scripts
-> tapent la base en même temps. On en a mis deux : les scripts « légers » passent par 5433,
-> les « lourds » par 5434. Résultat : ~2× moins d'embouteillage. Aucune ouverture sur Internet.
-
----
-
-## 4. La règle d'or du pipeline : PRÉCISION > RAPPEL
-
-C'est LE truc le plus important à comprendre. **(Réponse honnête à « tu trouves 99 % ? » → NON.)**
-
-```
-   RAPPEL = "est-ce que je trouve TOUT ce qui existe ?"   ← on n'optimise PAS ça
-   PRÉCISION = "ce que j'affiche, est-ce VRAI ?"          ← on optimise ÇA
-```
-
-Pourquoi ce choix ? Parce qu'un **mauvais** lien (ex : le Facebook du badminton sur la fiche
-d'une asso de musique) est **pire** que pas de lien du tout. Donc le pipeline est **prudent** :
-
-```
-   Un lien candidat trouvé sur Internet
-              │
-              ▼
-   Est-ce que le nom de l'asso colle ?  ──NON──►  🗑️ jeté
-              │ OUI
-              ▼
-   Le LLM confirme que c'est bien CETTE asso ?  ──DOUTE──►  🗑️ jeté (ou quarantaine)
-              │ OUI, sûr
-              ▼
-   ✅ AFFICHÉ
-```
-
-**Conséquence à assumer :**
-- ✅ Ce qui est affiché est **très probablement juste** (peu de faux).
-- ❌ On **rate** des liens réels : sites mal référencés, petites assos sans présence web,
-  cas ambigus. On ne trouve **pas** 99 % de l'existant. On trouve « l'évident bien indexé ».
-
-> En clair : si une asso a un site connu et bien référencé, on le trouve. Si son site est
-> obscur, ou seulement écrit dans un coin de sa page Facebook, on peut le rater. C'est un
-> choix assumé : **mieux vaut une fiche vide qu'une fiche fausse.**
-
----
-
-## 5. Le pipeline, étape par étape (les scripts)
-
-Le pipeline = une chaîne de petits scripts. Chacun fait UNE chose et écrit son résultat dans
-la base (dans une colonne `meta` qui est un « tiroir » fourre-tout au format JSON). **Un seul
-script a le droit de toucher la colonne `social`** (les liens affichés) : c'est `apply.py`.
-Tous les autres écrivent des « preuves » dans `meta`, et `apply` décide à la fin.
-
-```
-  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-  │ 1. discover  │──►│ 2. verify    │──►│ 3. apply     │──►│  social{}    │
-  │ (cherche)    │   │ (le LLM juge)│   │ (décide)     │   │  = AFFICHÉ   │
-  └──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
-    écrit dans         écrit dans          LIT les 2 d'avant   la fiche montre ça
-    meta.discovery     meta.verification   et écrit social{}
-```
-
-### `discover.py` — SCRAP 1 : "le chercheur" ( ## possible à dupliquer specifique par hello assos, fb, insta, site web ... ? ca me semble galere et pas particulierement pertinent )
-```python
-# Pour chaque asso, il tape une recherche sur DuckDuckGo :
-#   "<nom de l'asso> <ville> association Vendée"
-# Il récupère les 10 premiers résultats (titre + url + petit extrait = "snippet").
-# Il TRIE les résultats : lesquels ressemblent à un Facebook ? un site ? un annuaire (poubelle) ?
-# Il NE décide PAS encore. Il liste juste les "candidats" dans meta.discovery.
-```
-> ⚠️ DuckDuckGo bloque si on tape trop vite (« rate-limit »). D'où les pauses et le « backoff »
-> (attendre de plus en plus longtemps si ça coince).
-
-### `verify_llm.py` — SCRAP 2 : "le juge" (##il peut pas juger sur les snipet pour les fb et tout, ca serait en plus pour quand les protection robots sont hard ?)
-```python
-# Pour chaque candidat trouvé, il demande à Ollama (le LLM local, sur ton GPU) :
-#   "Ce lien appartient-il VRAIMENT à CETTE asso précise ?"
-# - Réseaux sociaux (FB/Insta/LinkedIn) : impossibles à lire (ils bloquent les robots),
-#   donc le LLM juge sur le TITRE + l'EXTRAIT de la recherche.
-# - Sites web : on TÉLÉCHARGE la vraie page, on la nettoie, et le LLM lit le contenu réel.
-# Réponse du LLM : keep (garde) / quarantine (doute) / drop (jette) + un score de confiance.
-# Écrit tout ça dans meta.verification.
-```
-
-### `apply.py` — SCRAP 4 : "le décideur" (le SEUL qui écrit `social`)
-```python
-# Il relit discover + verify et calcule un SCORE par lien.
-#   score >= 0.75            -> social{}        (AFFICHÉ)
-#   0.40 <= score < 0.75     -> meta.quarantine (revue humaine)
-#   score < 0.40             -> jeté (tracé dans meta.dropped)
-# Il RECONSTRUIT social{} à zéro à chaque passage à partir des preuves. Donc si tu modifies
-# social "à la main", apply l'écrasera : il faut passer par les preuves (meta.*).
-```
-
-### `helloasso.py` — "le spécialiste dons" (## sur hello asso c'est bien protejet des robot ? car il on les liens des sites et reseaux sur les pages presentation des asso)
-```python
-# Cherche spécifiquement sur helloasso.com. Les liens HelloAsso sont FIABLES (la plateforme
-# vérifie déjà l'asso), donc si le nom colle bien, on les garde direct (pas besoin du LLM).
-```
-
-### `liveness.py` — SCRAP 5 : "le testeur de liens morts"
-```python
-# Teste si les SITES WEB et HelloAsso répondent encore (code HTTP).
-#  alive (200) / dead (404, domaine disparu) / blocked (403 anti-robot) / error (timeout)
-# - On NE teste PAS Facebook/Insta/LinkedIn : ils renvoient 403 à tout le monde -> inutile.
-# - "Double-check" : un lien mort est re-testé tout de suite (anti-faux-positif réseau).
-# - On re-teste périodiquement (sain tous les 14j, suspect tous les 1j).
-# Écrit dans meta.linkHealth. NE retire RIEN tout seul (c'est le rôle du reaper).
-```
-
-### `reap_dead.py` — SCRAP 6 : "le faucheur"
-```python
-# Retire VRAIMENT les liens confirmés morts (par liveness) de la fiche.
-#  - 404/410 (page qui n'existe plus) -> retiré tout de suite.
-#  - domaine injoignable -> retiré seulement après 12h de panne (au cas où c'est temporaire).
-# Tout retrait est tracé dans meta.deadRemoved (réversible).
-```
-
-### `score.py` — SCRAP 7 : "le noteur"
-```python
-# Donne une note /100 + un tier A/B/C/D à chaque fiche, selon :
-#  - COUVERTURE  : a-t-elle un site ? un réseau social ? un HelloAsso ?
-#  - VÉRIF       : jugée par notre LLM (mieux) ou pas ?
-#  - SANTÉ       : ses liens sont-ils vivants ?
-#  - FRAÎCHEUR   : vérif récente ? agenda à venir ?
-# Cette note pilote aussi les priorités (les fiches faibles repassent en premier).
-```
-
-### `events.py` — SCRAP 8 : "l'agenda"
-```python
-# Récupère les ÉVÉNEMENTS À VENIR via l'API publique OpenAgenda (Opendatasoft).
-# ⚠️ On NE scrape PAS infolocale (403 anti-robot total). On utilise une API LÉGALE et gratuite.
-# Astuce maligne : il n'y a que ~quelques centaines d'événements à venir en Vendée -> on les
-# récupère TOUS en ~3 appels, puis on les rattache à chaque asso PAR DISTANCE (calcul local).
-#  - événement dont le nom matche l'asso -> "à elle"
-#  - sinon, les plus proches -> "agenda de la commune" (pour que la fiche ne soit jamais vide)
-```
-
-### `fb_website.py` + `fb_promote.py` — SCRAP 9 : "le site caché dans le Facebook"
-```python
-# Idée : une asso qui n'a QUE son Facebook écrit souvent son site dans l'"Intro" de la page FB.
-# fb_website.py : DDG indexe cette Intro -> on lit l'extrait DDG de la page FB et on en extrait
-#                 un domaine candidat (ex: handiespoir.fr). Écrit meta.fbWebsite (CANDIDAT).
-# fb_promote.py : VÉRIFIE ce candidat par LLM (télécharge le site, "c'est bien cette asso ?").
-#                 Si oui -> promu en website affiché. Sinon -> abandonné.
-# -> Un site trouvé via FB n'est JAMAIS affiché sans cette vérification. Prudence d'abord.
+   ┌────────────────┐  lit/écrit  ┌────────────────────────┐  lit  ┌──────────────┐
+   │  LA BASE       │◄───────────►│  LE PIPELINE           │       │  L'APPLI     │
+   │  PostgreSQL    │             │  (scripts Python)      │       │  API + SPA   │
+   │  = la vérité   │◄─────────────────────────────────────────── │  (lecture)   │
+   └────────────────┘    lit                                      └──────────────┘
+         ▲                            │  Internet (moteurs, sites, OpenAgenda)
+         └── SEUL apply.py écrit ─────┘
+             la couche affichée
 ```
 
 ---
 
-## 6. Le voyage d'un lien : de "candidat" à "affiché"
+## 2. Glossaire express
 
-```
-   DuckDuckGo dit :                meta.discovery
-   "facebook.com/MonAsso"   ─────► socialCandidates: [{platform:facebook, url:..., match:slug}]
-                                          │
-                                          ▼
-   Ollama (LLM) juge :             meta.verification
-   "oui, confiance 0.9, keep" ────► results: {facebook: {verdict:keep, confidence:0.9}}
-                                          │
-                                          ▼
-   apply.py calcule :              social   (la colonne lue par l'appli)
-   score = 0.35*0.9 + 0.65*0.9     {facebook: "facebook.com/MonAsso"}
-         = 0.88  >= 0.75      ────► ✅ AFFICHÉ sur la fiche
-                                          │
-                                          ▼
-   liveness teste plus tard :      meta.linkHealth
-   (FB non testé)                  reap ne touche pas FB -> reste affiché
-```
+- **RNA** : fichier officiel des associations françaises ; la source brute.
+- **`ddgs`** : lib de méta-recherche (DuckDuckGo, Bing, Brave, Google, Startpage, Yahoo,
+  Yandex, Mojeek…). On choisit le moteur par variable d'environnement.
+- **LLM / Ollama** : modèle de langage **local** qui juge si un lien appartient bien à l'asso.
+- **`meta`** : colonne **JSONB** ; le **journal de bord** où chaque script écrit ses preuves
+  et ses horodatages (jamais affiché tel quel).
+- **`social`** : colonne **JSONB** des **liens affichés**. **Un seul** script l'écrit : `apply.py`.
+- **gating** : la condition `WHERE` qui décide *quelles lignes* un script traite (« pas encore
+  traité » ou « plus vieux que N jours ») → rend tout **reprenable**.
+- **idempotent** : relancer ne casse rien et ne duplique rien.
+- **shard** : tranche de travail. `--shard N/M` = « je traite 1 ligne sur M » → permet de
+  lancer M workers concurrents sans doublon.
 
 ---
 
-## 7. Comment ça arrive sur le site (temps réel ou pas ?)
+## 3. Les composants
+
+| Composant | Rôle | Remarque |
+|---|---|---|
+| **Base** PostgreSQL/PostGIS | source de vérité unique (table `associations`) | jamais exposée publiquement ; accédée via tunnel. |
+| **Workers de recherche** | exécutent les passes de découverte (`discover*`) | peuvent tourner sur **plusieurs hôtes / IP** pour éviter la saturation des moteurs (voir §8). |
+| **Hôte de vérification** (GPU) | exécute le **LLM** (`verify_llm`) + `apply/score/events` | la vérif a besoin du GPU. |
+| **API** (NestJS) | sert les données en **lecture directe** depuis la base | pas de cache : ce qu'écrit le pipeline est visible au rechargement. |
+| **Front** (SPA Vite) | la carte + les fiches | ré-interroge l'API à chaque visite. |
+| **Recherche texte** (Meilisearch) | index séparé pour la barre de recherche | rempli par un **reindex** (les liens `social` n'y sont pas indexés). |
+
+> La recherche n'a besoin que d'Internet + la base → elle peut tourner **en continu**, sur des
+> hôtes différents de celui qui fait la vérification LLM.
+
+---
+
+## 4. Le modèle de données
+
+Tout tient dans **une** table : `associations`. Les colonnes qui comptent pour le pipeline :
+
+| Colonne | Type | Rôle |
+|---|---|---|
+| `id` | `uuid` | clé primaire. ⚠️ pas un entier → pour sharder on hashe (`hashtext(id::text)`). |
+| `name`, `city`, `department` | `text` | identité (RNA). `department` pilote la progression. |
+| `location` | `geometry` | point PostGIS. **`location IS NOT NULL`** = condition d'éligibilité de presque toutes les passes. |
+| `description` | `text` | contexte passé au LLM. |
+| `website` | `text` | site « principal » (couche servie, hors `social`). |
+| `social` | `jsonb` | **liens affichés** : `{facebook, instagram, website, helloasso, …}`. Écrit **uniquement** par `apply.py`. |
+| `status` | `text` | `published` / `pending` … (le site sert `published`). |
+| `meta` | `jsonb` | **le journal** : tout le reste (ci-dessous). |
+
+### La colonne `meta` = le bus entre scripts
+
+Chaque étape **lit** une clé `meta`, travaille, **écrit** une autre clé `meta`. La clé écrite par
+l'étape N est précisément la **condition de gating** de l'étape N+1. C'est ce « contrat » qui fait
+avancer le pipeline sans orchestrateur central.
+
+| Clé `meta` | Écrite par | Lue par (gating) | Contenu |
+|---|---|---|---|
+| `discovery` | `discover`, `discover_targeted` | `verify_llm`, `apply` | `{socialCandidates[], websiteCandidates[], mairieListings[], mentions[]}` |
+| `discoveryAt` | `discover` | `score` | timestamp ISO |
+| `fbTargetedAt` / `igTargetedAt` / `webTargetedAt` | `discover_targeted` | `discover_targeted`, `target_dept` | marqueurs « plateforme déjà cherchée » |
+| `helloassoCheckedAt` | `helloasso`, `discover_targeted` | idem + `target_dept` | marqueur HelloAsso |
+| `verification` | `verify_llm` | `apply`, `score` | `{ts, model, results:{<plat>:{url, verdict, confidence, reason}}}` |
+| `verifiedAt` | `verify_llm` | `score` | timestamp ISO |
+| `quarantine` | `apply` | `score` | liens 0.40–0.75 (revue humaine) |
+| `dropped` | `apply` | (audit) | liens rejetés (trace) |
+| `applyAt` | `apply` | `score` | timestamp ISO |
+| `legacy` | `apply` (1×) | `apply` (gate) | archive de l'ancien `social` (rollback) |
+| `linkHealth` / `linkHealthAt` | `liveness` | `apply`, `reap_dead`, `score` | `{website|helloasso:{status, consecutiveFailures, …}}` |
+| `deadRemoved` / `directoryRemoved` | `reap_dead` / `purge_directories` | (audit) | trace des retraits (réversible) |
+| `fbWebsite` / `fbWebsiteCheckedAt` / `fbWebsitePromotedAt` | `fb_website`, `fb_promote` | `fb_promote` (gate) | site déduit d'une page FB + verdict |
+| `events` / `eventsScrapedAt` | `events` | `score` | agenda à venir (OpenAgenda) |
+| `qualityScore` / `qualityComputedAt` | `score` | API / priorisation | `{score, tier, flags[]}` |
+
+> 💡 `meta` n'est jamais montré à l'utilisateur. C'est le dossier d'instruction (toutes les
+> preuves + dates) ; `apply.py` est le « juge » qui décide, à partir de ces preuves, ce qui mérite
+> d'apparaître dans `social`.
+
+---
+
+## 5. Le pipeline, étape par étape
 
 ```
-   Le pipeline écrit dans la base
+  ┌──────────────────────┐ meta.discovery ┌────────────┐ meta.verification ┌────────┐ social{}
+  │ discover(_targeted)  │───────────────►│ verify_llm │──────────────────►│ apply  │────────► AFFICHÉ
+  │  + helloasso         │                │  (LLM)     │                   │ (juge) │
+  └──────────────────────┘                └────────────┘                   └────────┘
+        │                       ┌──────────── maintenance / qualité ───────┴───────────┐
+        ▼                       ▼                ▼                ▼                      ▼
+   meta.discovery        liveness ─► reap_dead  purge_directories  score              events
+   (+ fb_website→fb_promote)  (teste)  (retire morts) (annuaires)  (note + tier)      (agenda)
+```
+
+Pour chaque script : rôle · args clés · **lit** (gating) · **écrit** · env. Défaut DB :
+`localhost:5433`. `--dry-run` désactive les écritures.
+
+### `discover.py` — découverte générale
+- **Rôle** : 1 recherche `"<nom> <ville> association"` par asso, classe le top ~10 en candidats
+  typés (réseaux / site / annuaire) via `lib_match.classify()`.
+- **Args** : `--limit --offset --dept --redo --dry-run --sleep` (def. 1.5).
+- **Lit** : `location IS NOT NULL` ET (sauf `--redo`) `meta->'discovery' IS NULL` [+ `--dept`].
+- **Écrit** : `meta.discovery`, `meta.discoveryAt`. **Ne touche pas `social`.**
+- **Env** : `DATABASE_URL`, `GK_DDGS_BACKEND/PROXY/TIMEOUT/COOLDOWN` (§8).
+
+### `discover_targeted.py` — découverte ciblée par plateforme
+- **Rôle** : recherche **dédiée** là où la générale rate (`site:facebook.com "<nom>" <ville>`…).
+- **Args** : `--platform {facebook|instagram|helloasso|website}` (requis) `--limit --dept --redo --sleep`.
+- **Lit** : `location IS NOT NULL` ET lien plateforme pas déjà dans `social` ET (réseaux) pas déjà
+  candidat ET (sauf `--redo`) marqueur plateforme absent.
+- **Écrit** : fusionne dans `meta.discovery` (cap 3 nouveaux candidats sociaux, 5 sites), pose le
+  marqueur (`fbTargetedAt`…), et **efface `meta.verification.model`** si nouveaux candidats →
+  `verify_llm` reprend la fiche tout seul.
+
+### `helloasso.py` — HelloAsso (auto-confiance)
+- **Rôle** : trouve la page HelloAsso ; matching **strict** (slug vs tokens du nom, rejette les
+  slugs « étrangers », ignore les tokens géo). Plateforme déjà vérifiée → fiable.
+- **Lit** : `location IS NOT NULL` ET `NOT social ? 'helloasso'` ET (sauf `--redo`) `helloassoCheckedAt` absent.
+- **Écrit** : `social.helloasso` **directement** (confiance 1.0, sans LLM) + `meta.helloassoFound` + `meta.helloassoCheckedAt`.
+
+### `lib_match.py` — utilitaires de matching (pas d'I/O DB)
+- `classify(asso, results)` → candidats typés avec un `match_type` (`slug` > `top1` > `slug_sub` >
+  `slug_city` > `top2` > `top3` > `title` > `fallback`) qui sert de **prior** au scoring (§7).
+
+### `verify_llm.py` — le juge LLM
+- **Rôle** : pour chaque candidat, « ce lien est-il bien CETTE asso ? ».
+  - **Réseaux (FB/IG)** : page non scrapable → jugement sur **titre + snippet + `match_type`**.
+  - **Sites** : on **télécharge** la page (Trafilatura/readability) → jugement sur le **texte réel**.
+  - **HelloAsso** : auto-trust (confiance 1.0, `verdict=keep`, sans appel LLM).
+- **Args** : `--limit --dept --redo --max-sites` (def. 2) `--model` `--shard N/M`.
+- **Lit** : `meta->'discovery' IS NOT NULL` ET (sauf `--redo`) `meta->'verification'->>'model' IS NULL`
+  [+ shard : `(hashtext(id::text) %% M + M) %% M = N`].
+- **Écrit** : `meta.verification = {ts, model, results:{…}}`, `meta.verifiedAt`.
+- **Env** : `DATABASE_URL`, `OLLAMA_HOST`, `VERIFY_MODEL`.
+
+> ⚠️ **Piège `%%`** : psycopg interprète `%` comme placeholder dès qu'on passe des paramètres ; le
+> modulo du shard doit donc s'écrire `%%`. Et comme `id` est un **uuid**, on hashe (`hashtext`).
+
+### `apply.py` — le décideur (SEUL à écrire `social`)
+- **Rôle** : fusionne **prior** (`discovery.match_type`) + **verdict LLM** (`verification`) en un
+  **score** par lien, puis route : appliqué / quarantaine / jeté. **Reconstruit `social` à zéro**
+  à chaque passe (déterministe, rejouable).
+- **Args** : `--limit --dept --dry-run --apply-th` (def. 0.75) `--quar-th` (def. 0.40).
+- **Lit** : `meta->'verification'->>'model' IS NOT NULL`.
+- **Écrit** : `social{}`, `meta.quarantine`, `meta.dropped`, `meta.applyAt`, `meta.legacy` (1×).
+- **Garde-fou liveness** : un lien `status='dead'` (≥2 échecs) est retiré de `social`.
+
+### `liveness.py` + `reap_dead.py` — santé des liens
+- `liveness` : HTTP parallèle (def. 32 workers) sur **sites + HelloAsso** (jamais les réseaux :
+  403 généralisé). Statuts `alive`/`dead`/`blocked`/`error`. Gating temporel : 14 j (sain) / 1 j
+  (suspect). Écrit `meta.linkHealth` + `linkHealthAt`.
+- `reap_dead` : retire un lien `dead` avec `consecutiveFailures ≥ 2` ; 404/410 immédiat, sinon
+  après `min-age-hours` (def. 12). Trace `meta.deadRemoved` (réversible).
+
+### `purge_directories.py` — nettoyage annuaires
+- Retire les domaines d'annuaires (mappy, cerfapp) glissés dans la couche servie. Trace `meta.directoryRemoved`.
+
+### `score.py` — note qualité (voir §7)
+- Agrège en **0–100 + tier A/B/C/D + flags**. Gating : ne recalcule que si une source est plus
+  récente que `qualityComputedAt`. Écrit `meta.qualityScore`.
+
+### `events.py` — agenda
+- API **OpenAgenda / Opendatasoft** (publique). Événements à venir rattachés par **proximité + nom**
+  (rayon def. 12 km, cap 6/asso). Gating `eventsScrapedAt` (def. 3 j). Écrit `meta.events`.
+
+### `fb_website.py` + `fb_promote.py` — site caché dans un Facebook
+- `fb_website` : pour les assos FB-only, extrait un **domaine candidat** du snippet. Écrit `meta.fbWebsite`.
+- `fb_promote` : **vérifie le candidat par LLM** (télécharge le site), promeut dans `website` si
+  `verdict=keep` ET `confidence ≥ 0.7`.
+
+---
+
+## 6. Cycle de vie d'un lien candidat
+
+```
+ [1] DÉCOUVERTE   discover / discover_targeted / helloasso
+     écrit  meta.discovery = { socialCandidates:[{platform,url,slug,match_type,rank,title,snippet}],
+                               websiteCandidates:[{url,host,score,title,snippet}], … }
+            │  gate suivant : meta.discovery EXISTE && meta.verification.model ABSENT
+            ▼
+ [2] VÉRIFICATION (LLM)   verify_llm  (shardable 0/2, 1/2, …)
+     écrit  meta.verification = { ts, model, results:{ facebook:{url,verdict,confidence,reason}, … } }
+            │  gate suivant : meta.verification.model EXISTE
+            ▼
+ [3] DÉCISION   apply   score = f(prior(match_type), confidence_llm)        (formules §7)
+       verdict "keep"                  → social[plat] = url   (ignore le score)
+       verdict "quarantine" & conf≥0.85 → social[plat] = url
+       score ≥ 0.75                    → social[plat] = url
+       0.40 ≤ score < 0.75             → meta.quarantine[plat]
+       score < 0.40 ou verdict drop    → meta.dropped[]
+       lien liveness=dead              → retiré de social
             │
-            ├──► FICHE (détail d'une asso) : l'API lit la base EN DIRECT.
-            │      -> tu RAFRAÎCHIS la page = tu vois la dernière version. ✅ quasi temps réel
-            │
-            ├──► CARTE (les points) : chargée 1 fois quand tu ouvres la carte.
-            │      -> il faut RECHARGER pour voir les nouveaux points. ⏳
-            │
-            └──► RECHERCHE (Meilisearch) : un index séparé, mis à jour SEULEMENT par un "reindex".
-                   -> ne contient que nom/ville/catégorie/description (pas les liens).
-                   -> à relancer après un gros changement de noms/catégories. ⏳ pas auto
+            ▼
+ [4] QUALITÉ + MAINTENANCE   liveness → reap_dead → (purge) ; score (/100, A–D) ; events (agenda)
 ```
+
+**Réinjection** : si `discover_targeted` ajoute un candidat, il **efface `verification.model`** →
+la fiche redevient éligible à `verify_llm` puis `apply`. Aucun appel manuel : le gating suffit.
 
 ---
 
-## 8. L'autonomie : le SUPERVISOR
+## 7. Le scoring (chiffres exacts)
 
-Un script PowerShell (`supervisor.ps1`) tourne en boucle (tâche planifiée Windows, démarre à
-l'ouverture de session, redémarre si crash). Son boulot :
+### a) Score d'un lien (`apply.py`)
 
+`prior` selon le `match_type` :
 ```
-   TOUTES LES 2 MINUTES, il vérifie :
-   ┌────────────────────────────────────────────────────────────────┐
-   │  1. Les 2 tunnels SSH sont-ils up ? sinon -> les relancer       │
-   │  2. Ollama tourne-t-il ? sinon -> le relancer                   │
-   │  3. Les jobs scrap tournent-ils ? sinon -> les relancer         │
-   │       • tunnel 5433 : discover, verify, helloasso, fb->site     │
-   │       • tunnel 5434 : liveness, events                          │
-   │  4. Tous les ~10 min : apply, reap, purge, score, fb-promote    │
-   └────────────────────────────────────────────────────────────────┘
-   -> Survit à la fermeture du chat, aux reboots. Tout est "idempotent"
-      (le relancer ne casse rien) et "reprenable" (reprend où ça s'est arrêté).
+slug 0.90 · top1 0.70 · slug_sub 0.60 · slug_city 0.55 · top2 0.50 · top3 0.35 · title 0.30 · fallback 0.10
 ```
+Combinaison prior × confiance LLM :
+```
+réseau, match "slug" :  score = 0.65*prior + 0.35*conf
+réseau, autre match  :  score = 0.35*prior + 0.65*conf
+site web             :  score = 0.25*site_prior(disc_score) + 0.75*conf
+```
+Seuils : **≥ 0.75** appliqué · **0.40–0.75** quarantaine · **< 0.40** jeté.
+Exceptions : `verdict=keep` → appliqué ; `verdict=quarantine & conf≥0.85` → appliqué ; HelloAsso →
+appliqué ; lien `dead` → retiré.
+
+### b) Note qualité d'une fiche (`score.py`, /100)
+```
+COUVERTURE   35  =  site 15  +  réseaux 12  +  helloasso 8
+VÉRIFICATION 25  =  verif_model 15 (×0.45 si legacy)  +  verif_conf 10 (moyenne des conf "keep")
+SANTÉ        20  =  health_clean 14 (aucun mort)  +  health_allalive 6
+FRAÎCHEUR    20  =  fresh_verif 7 (décroît 90j→365j) + fresh_health 5 (21j→90j)
+                    + fresh_press 2 + has_press 2 + fresh_events 4
+```
+Tiers : **A ≥ 80 · B 60–79 · C 40–59 · D < 40**. Le tier sert à **prioriser** les fiches faibles
+en interne (non affiché au public).
 
 ---
 
-## 9. État réel actuel (et ce que ça veut dire)
+## 8. Anti-saturation des moteurs
+
+**Problème** : N boucles de découverte sur le **même moteur** depuis la **même IP** → le moteur
+bloque (timeouts, 0 résultat).
+
+**Solution** : chaque passe = un **couple (moteur × IP) unique**.
 
 ```
-   total des assos ............ 18 554
-   découvertes (DDG) .......... 10 247  (55%)  ← le scrap a fait plus de la moitié
-   vérifiées par notre LLM ....  7 235  (39%)  ← en cours, monte tout seul
-   liens appliqués (affichés) .  6 880
-   sites web servis ...........  2 724         ← PAS 18 554 : beaucoup d'assos n'ont pas de site
-   agenda à venir .............. 13 756  (74%) ← la plupart ont des événements proches
-   liens morts retirés ........    231
-   note qualité calculée ...... 18 554  (100%)
-   candidats site-via-FB ......     45
+   AVANT (cassé)                          APRÈS (réparti)
+   N boucles ─┐                           passe A : moteur1 @ IP1
+   N boucles ─┼─► 1 moteur @ 1 IP         passe B : moteur2 @ IP1
+   N boucles ─┘      💥 saturé            passe C : moteur3 @ IP2
+                                          passe D : moteur4 @ IP2  …
 ```
 
-> **Lecture honnête :** "2 724 sites web" ne veut PAS dire qu'on a raté 15 000 sites. Ça veut
-> dire que la majorité des petites assos **n'ont pas de site web du tout**. On affiche ce qui
-> existe ET qu'on a pu confirmer. Le chiffre montera encore (on n'est qu'à 55% de découverte),
-> mais il ne montera jamais à 18 554 : ce plafond n'existe pas dans la vraie vie.
+Piloté par variables d'env (lues dans `discover.py` / `discover_targeted.py`) :
 
----
-
-## 10. Ce que le système fait BIEN / ce qu'il ne fait PAS
-
-| ✅ Fait bien | ❌ Ne fait pas (assumé) |
+| Variable | Rôle |
 |---|---|
-| Afficher des liens **justes** (haute précision) | Trouver **tous** les liens existants (rappel partiel) |
-| Retirer les liens **morts** et les **faux** legacy | Deviner un site qui n'est référencé **nulle part** |
-| Se mettre à jour **tout seul**, en continu | Tout corriger **instantanément** (c'est progressif) |
-| Agenda à venir **légal** (OpenAgenda) | Lire infolocale/Facebook directement (403 anti-robot) |
-| Noter et prioriser les fiches faibles | Garantir une fiche "complète" pour chaque asso |
+| `GK_DDGS_BACKEND` | **liste** de moteurs (`google,bing,yahoo`). Au moindre échec, le retry **bascule** au suivant. |
+| `GK_DDGS_PROXY` | proxy SOCKS optionnel (sortie par une autre IP). |
+| `GK_DDGS_TIMEOUT` | délai d'attente (plus long derrière un proxy). |
+| `GK_DDGS_COOLDOWN` | un moteur « rate-limited » est mis au repos (def. 180 s). |
+
+> ⚠️ Le scraping HTML des moteurs **fluctue** (selon l'IP et l'heure). D'où les **listes avec
+> repli** : un primaire distinct par passe + des moteurs fiables en filet. `search_with_retry`
+> bascule au moteur suivant sur `DDGSException`.
 
 ---
 
-## 11. Glossaire ultra-court
+## 9. Progression région par région
 
-- **RNA** : le fichier officiel des associations (source de départ, pauvre).
-- **DDG** : DuckDuckGo, le moteur de recherche qu'on interroge.
-- **LLM / Ollama** : l'« IA » locale (sur ton GPU) qui juge si un lien est le bon.
-- **meta** : le tiroir JSON dans la base où chaque script écrit ses preuves.
-- **social** : la colonne des liens AFFICHÉS (seul apply.py l'écrit).
-- **idempotent** : « relancer ne casse rien ». **rate-limit** : « tu tapes trop vite, attends ».
-- **précision** : « ce que je montre est vrai ». **rappel** : « je trouve tout ». On vise la 1ère.
+On traite **un département à la fois**, dans l'ordre d'une liste cible. `target_dept.py` renvoie le
+**premier département encore en travail** :
+
+```sql
+-- "pas fini" = il reste ≥ 1 asso géolocalisée à qui manque la découverte OU une passe ciblée :
+SELECT EXISTS(
+  SELECT 1 FROM associations
+  WHERE department = %s AND location IS NOT NULL
+    AND ( (meta->'discovery') IS NULL
+       OR (meta->>'fbTargetedAt')       IS NULL
+       OR (meta->>'igTargetedAt')       IS NULL
+       OR (meta->>'webTargetedAt')      IS NULL
+       OR (meta->>'helloassoCheckedAt') IS NULL )
+  LIMIT 1);
+```
+
+- **Done** = plus aucune asso ne matche → on passe au département suivant.
+- Timeouts internes → ne peut jamais geler la boucle appelante.
+- Suivi : `progress.py --dept <code>` (barre par plateforme), `stats.py` (vue globale).
+
+---
+
+## 10. Orchestration & reprise
+
+- **Découpage du travail** : `verify_llm.py --shard N/M` permet **plusieurs workers de vérification
+  concurrents** sur la même file, sans doublon (partition par `hashtext(id)`).
+- **Reprise** : chaque passe **commit par ligne** et utilise un **gating** (timestamp / marqueur) →
+  relancer reprend exactement où ça s'est arrêté. Tout est **idempotent**.
+- **Tunnels** : la base n'étant jamais exposée, les scripts s'y connectent via un tunnel SSH local
+  (voir [`RUN.md`](RUN.md) pour la commande générique).
+
+> Pour la procédure d'exécution pas à pas, voir [`RUN.md`](RUN.md).
