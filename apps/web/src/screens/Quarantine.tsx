@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, type QuarantineAssoc } from "../lib/api";
 import { Icon, type IconName } from "../components/Icon";
+import { useIsMobile } from "../lib/useIsMobile";
 
 // Un lien à arbitrer (on "aplatit" chaque plateforme d'une fiche en une carte).
 interface Item {
@@ -67,6 +68,7 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
   const [now, setNow] = useState(Date.now());
   const pageRef = useRef(1);
   const seenRef = useRef<Set<string>>(new Set());
+  const isMobile = useIsMobile();
 
   const key = (it: Item) => `${it.id}:${it.platform}`;
 
@@ -137,7 +139,7 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
     <div style={{ minHeight: "100vh", background: "var(--bg-soft)", fontFamily: "var(--font)" }}>
       {/* En-tête */}
       <header style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
         padding: "18px clamp(16px, 5vw, 48px)", background: "var(--bg)",
         borderBottom: "1px solid var(--hairline)", position: "sticky", top: 0, zIndex: 5,
       }}>
@@ -211,39 +213,46 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
               )}
 
               <div style={{
-                display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                display: "flex", gap: 8, flexWrap: "wrap",
+                flexDirection: isMobile ? "column" : "row",
+                alignItems: isMobile ? "stretch" : "center",
                 marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--hairline)",
               }}>
                 <a href={it.url} target="_blank" rel="noopener noreferrer"
                   onClick={() => setOpened((s) => new Set(s).add(key(it)))}
-                  className="btn btn-ghost btn-sm"
-                  style={{ display: "inline-flex", alignItems: "center", gap: 7, marginRight: "auto", maxWidth: "100%" }}>
-                  <Icon name="arrowUpRight" size={15} stroke={2.2} />
+                  className="btn btn-ghost btn-md"
+                  style={{ display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 7,
+                    marginRight: isMobile ? 0 : "auto", maxWidth: "100%", overflow: "hidden" }}>
+                  <Icon name="arrowUpRight" size={16} stroke={2.2} />
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     Ouvrir {domainOf(it.url)}
                   </span>
                 </a>
-                <button onClick={() => act(it, "keep")} disabled={!isOpen || paused}
-                  title={isOpen ? "" : "Ouvre d'abord le lien"}
-                  className="btn btn-sm"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6, color: "#fff",
-                    background: isOpen && !paused ? "#16a34a" : "#bcd9c4",
-                    cursor: isOpen && !paused ? "pointer" : "not-allowed",
-                  }}>
-                  <Icon name="check" size={15} stroke={2.6} /> Garder
-                </button>
-                <button onClick={() => act(it, "drop")} disabled={!isOpen || paused}
-                  title={isOpen ? "" : "Ouvre d'abord le lien"}
-                  className="btn btn-sm"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    color: isOpen && !paused ? "#dc2626" : "#c7989a",
-                    background: "var(--bg)", border: `1.5px solid ${isOpen && !paused ? "#dc2626" : "#e7c9ca"}`,
-                    cursor: isOpen && !paused ? "pointer" : "not-allowed",
-                  }}>
-                  <Icon name="close" size={15} stroke={2.6} /> Jeter
-                </button>
+                <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : "auto" }}>
+                  <button onClick={() => act(it, "keep")} disabled={!isOpen || paused}
+                    title={isOpen ? "" : "Ouvre d'abord le lien"}
+                    className="btn btn-md"
+                    style={{
+                      flex: isMobile ? 1 : "0 0 auto", display: "inline-flex", justifyContent: "center",
+                      alignItems: "center", gap: 6, color: "#fff",
+                      background: isOpen && !paused ? "#16a34a" : "#bcd9c4",
+                      cursor: isOpen && !paused ? "pointer" : "not-allowed",
+                    }}>
+                    <Icon name="check" size={16} stroke={2.6} /> Garder
+                  </button>
+                  <button onClick={() => act(it, "drop")} disabled={!isOpen || paused}
+                    title={isOpen ? "" : "Ouvre d'abord le lien"}
+                    className="btn btn-md"
+                    style={{
+                      flex: isMobile ? 1 : "0 0 auto", display: "inline-flex", justifyContent: "center",
+                      alignItems: "center", gap: 6,
+                      color: isOpen && !paused ? "#dc2626" : "#c7989a",
+                      background: "var(--bg)", border: `1.5px solid ${isOpen && !paused ? "#dc2626" : "#e7c9ca"}`,
+                      cursor: isOpen && !paused ? "pointer" : "not-allowed",
+                    }}>
+                    <Icon name="close" size={16} stroke={2.6} /> Jeter
+                  </button>
+                </div>
               </div>
             </div>
           );

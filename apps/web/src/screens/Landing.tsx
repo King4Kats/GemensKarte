@@ -343,7 +343,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         <div style={{ flex: "1 1 300px", maxWidth: 560 }}>
           <span className="eyebrow" style={{ marginBottom: 16, display: "block" }}>Le projet</span>
           <h2 style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 800, letterSpacing: "-0.03em", color: "var(--ink)", margin: "0 0 24px", lineHeight: 1.1 }}>
-            Fait avec <span style={{ color: "#ff2d78", display: "inline-flex", verticalAlign: "middle" }}><Icon name="heart" size={30} stroke={2.2} /></span> en Vendée,<br />pour toute la région
+            Fait avec <span style={{ color: "#ff2d78", display: "inline-flex", verticalAlign: "middle" }}><Icon name="heart" size={30} stroke={2.2} /></span> en Vendée,<br />pour toutes les régions
           </h2>
           <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 20px" }}>
             GemensKarte est un projet <strong>100&nbsp;% bénévole</strong>, né d'un constat simple&nbsp;:
@@ -796,9 +796,10 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             Soutenir GemensKarte
           </h2>
           <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 28px" }}>
-            GemensKarte est <strong>gratuit et 100&nbsp;% bénévole</strong>. Les dons couvrent l'hébergement,
-            les noms de domaine et le temps de développement — et aident à ouvrir de nouveaux territoires.
-            Chaque coup de pouce compte.
+            GemensKarte est <strong>gratuit et 100&nbsp;% bénévole</strong> — enfin, presque&nbsp;: nos robots
+            fouillent et vérifient le web <strong>24h/24</strong>, et tout ça consomme bien réel… de l'électricité
+            (et ça fait chauffer les machines 😅). Tes dons paient le courant, l'hébergement, les noms de domaine
+            et le temps de développement — et aident à ouvrir de nouveaux territoires. Chaque coup de pouce compte 💛.
           </p>
           <a href={STRIPE_DON_URL} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-md"
             style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
