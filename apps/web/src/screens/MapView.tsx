@@ -100,18 +100,20 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   useEffect(() => {
     deptRef.current = dept?.code;
     didFitRef.current = false;
-    api.geojson({ located: true, department: dept?.code, limit: 3000 })
+    // NB : pas de paramètre `limit` (le schéma le plafonne à 100 pour la pagination) ;
+    // le geojson applique son propre plafond serveur (~4000).
+    api.geojson({ located: true, department: dept?.code })
       .then(setPoints).catch(() => setPoints([]));
   }, [dept?.code]);
 
-  // Charge les points de la zone actuellement affichée (bbox de la carte), plafonnés.
+  // Charge les points de la zone actuellement affichée (bbox de la carte), plafonnés serveur.
   const loadViewport = useCallback(() => {
     const m = mapRef.current;
     if (!m) return;
     const b = m.getBounds();
     api.geojson({
       located: true, department: deptRef.current,
-      bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], limit: 4000,
+      bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
     }).then(setPoints).catch(() => {});
   }, []);
 
