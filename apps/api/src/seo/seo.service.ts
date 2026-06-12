@@ -19,6 +19,20 @@ const MAX_LISTE = 600; // plafond d'assos affichées par page (évite des pages 
 
 const CAT_LABEL: Record<string, string> = Object.fromEntries(CATEGORIES.map((c) => [c.id, c.label]));
 
+// Tournure naturelle pour les sous-titres H2 « Associations <…> à <ville> »
+// (capte la longue traîne : "association sportive Brest", "association culturelle …").
+const CAT_GENRE: Record<string, string> = {
+  sport: "sportives",
+  cult: "culturelles",
+  eco: "écologie et environnement",
+  social: "de vie locale",
+  soli: "de solidarité",
+  edu: "éducation et jeunesse",
+  patri: "de patrimoine",
+};
+// Ordre d'affichage stable des catégories (celui de CATEGORIES).
+const CAT_ORDER: string[] = CATEGORIES.map((c) => c.id);
+
 function esc(s: string | null | undefined): string {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -98,7 +112,9 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 .logo{font-weight:800;font-size:20px;letter-spacing:-.02em;color:var(--ink);text-decoration:none}.logo span{color:var(--accent)}
 .cta{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:10px 18px;border-radius:999px;white-space:nowrap}
 h1{font-size:clamp(26px,5vw,38px);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin:0 0 12px}
+h2{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:32px 0 12px}
 .lead{font-size:17px;color:var(--muted);margin:0 0 28px}
+.lead strong{color:var(--ink);font-weight:700}
 ul.assos{list-style:none;padding:0;margin:0;display:grid;gap:8px}
 ul.assos li{padding:11px 15px;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
 .nom{font-weight:700}.cat{color:var(--muted);font-size:13px}
@@ -147,7 +163,7 @@ ${o.body}
     if (!deptCode) return null;
     const c = (await this.allCommunes()).find((x) => x.dept === deptCode && x.slug === communeSlug);
     if (!c) return null;
-    const { nom: deptNom } = SEO_DEPARTEMENTS[deptCode];
+    const { nom: deptNom, region } = SEO_DEPARTEMENTS[deptCode];
     const rows = await this.db.execute<{ name: string; category_id: string; social: Record<string, string> | null; website: string | null }>(sql`
       SELECT name, category_id, social, website
       FROM associations
@@ -156,16 +172,41 @@ ${o.body}
       LIMIT ${MAX_LISTE}
     `);
     const items = rows.rows;
-    const lis = items.map((a) => {
+
+    // Une ligne <li> d'association (nom + catégorie + éventuel lien site officiel).
+    const renderLi = (a: typeof items[number]): string => {
       const label = CAT_LABEL[a.category_id] ?? "Association";
       const site = a.social?.website || a.website || null;
       const link = site ? ` <a href="${esc(site)}" target="_blank" rel="nofollow noopener">site</a>` : "";
       return `  <li><span class="nom">${esc(a.name)}</span> <span class="cat">· ${esc(label)}</span>${link}</li>`;
+    };
+
+    // On REGROUPE par catégorie : chaque groupe devient une section avec un H2
+    // riche en mots-clés ("Associations sportives à <ville>"). Bien meilleur pour
+    // le référencement que la liste à plat (structure + longue traîne).
+    const byCat: Record<string, typeof items> = {};
+    for (const a of items) (byCat[a.category_id] ??= []).push(a);
+    const catsPresent = CAT_ORDER.filter((id) => byCat[id]?.length);
+    const sections = catsPresent.map((id) => {
+      const genre = CAT_GENRE[id] ?? (CAT_LABEL[id] ?? "").toLowerCase();
+      const lis = byCat[id].map(renderLi).join("\n");
+      return `<h2>Associations ${esc(genre)} à ${esc(c.display)}</h2>\n<ul class="assos">\n${lis}\n</ul>`;
     }).join("\n");
     const reste = c.n > items.length ? `<p class="lead">… et ${c.n - items.length} autres associations à ${esc(c.display)}, à découvrir sur la <a href="/">carte interactive</a>.</p>` : "";
 
-    const title = `Associations à ${c.display} (${deptNom}) — GemensKarte`;
-    const desc = `Les ${c.n} associations de ${c.display} (${deptNom}) : sport, culture, solidarité, environnement, éducation… Coordonnées et liens sur GemensKarte.`;
+    // Maillage interne : quelques autres communes du même département.
+    const voisines = (await this.allCommunes())
+      .filter((x) => x.dept === deptCode && x.slug !== c.slug)
+      .slice(0, 24)
+      .map((x) => `<a href="/${x.deptSlug}/${x.slug}">Associations ${esc(x.display)}</a>`)
+      .join("");
+
+    // Phrase d'intro unique : ville + département + région + nombre + catégories.
+    const themes = catsPresent.map((id) => (CAT_LABEL[id] ?? "").toLowerCase()).filter(Boolean);
+    const themesTxt = themes.length ? themes.join(", ") : "sport, culture, solidarité, environnement, éducation";
+
+    const title = `Associations à ${c.display} (${deptNom}) — annuaire des assos`;
+    const desc = `Les ${c.n} associations de ${c.display} (${deptNom}) : ${themesTxt}. Trouvez une association à ${c.display}, ses coordonnées et son site sur GemensKarte.`;
     const jsonld = JSON.stringify([
       {
         "@context": "https://schema.org", "@type": "ItemList",
@@ -180,11 +221,10 @@ ${o.body}
     ]);
     const body = `
 <h1>Associations à ${esc(c.display)} (${esc(deptNom)})</h1>
-<p class="lead">${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} à ${esc(c.display)} — sport, culture, solidarité, environnement, éducation… Explorez-les sur la <a href="/">carte interactive de GemensKarte</a>. Voir <a href="/${c.deptSlug}">toutes les communes — ${esc(deptNom)}</a>.</p>
-<ul class="assos">
-${lis}
-</ul>
-${reste}`;
+<p class="lead">Vous cherchez une <strong>association à ${esc(c.display)}</strong> ? GemensKarte référence ${c.n} association${c.n > 1 ? "s" : ""} à ${esc(c.display)}, dans le département ${esc(deptNom)} (${esc(region)}) — ${esc(themesTxt)}. Retrouvez-les ci-dessous, ou explorez-les sur la <a href="/">carte interactive</a>. Voir aussi <a href="/${c.deptSlug}">toutes les communes — ${esc(deptNom)}</a>.</p>
+${sections}
+${reste}
+${voisines ? `<p class="lead" style="margin-top:32px">Associations dans d'autres communes du ${esc(deptNom)} :</p>\n<div class="deps">${voisines}</div>` : ""}`;
     return this.doc({ title, desc, canonical: `${BASE}/${c.deptSlug}/${c.slug}`, jsonld, body });
   }
 
