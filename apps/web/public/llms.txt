@@ -1,0 +1,22 @@
+# GemensKarte
+
+> La carte interactive et gratuite de toutes les associations de France (métropole et outre-mer). Données issues du Répertoire National des Associations (RNA, data.gouv.fr), enrichies automatiquement (sites, réseaux sociaux). Projet bénévole.
+
+GemensKarte recense les associations loi 1901 par commune et par département, dans 7 grands domaines : écologie, culture, sport, vie locale, solidarité, éducation, patrimoine. Chaque commune dispose d'une page listant ses associations (nom, domaine, site officiel quand disponible).
+
+## Pages principales
+
+- [Carte interactive](https://gemenskarte.fr/): trouver les associations près de chez soi sur une carte de France.
+- [Associations par commune](https://gemenskarte.fr/territoires): index de tous les territoires couverts (départements et communes).
+- [Plan du site](https://gemenskarte.fr/sitemap.xml): toutes les pages communes et départements.
+
+## Structure des pages
+
+- Page commune: https://gemenskarte.fr/<departement>/<commune> — ex. https://gemenskarte.fr/finistere/brest — liste des associations de la commune, regroupées par domaine, avec une FAQ.
+- Page département: https://gemenskarte.fr/<departement> — ex. https://gemenskarte.fr/finistere — index des communes du département.
+
+## À propos
+
+- Source des données: Répertoire National des Associations (RNA), Ministère de l'Intérieur, via data.gouv.fr.
+- Cartographie: OpenStreetMap.
+- Site et contact: https://flavienauvray.me/

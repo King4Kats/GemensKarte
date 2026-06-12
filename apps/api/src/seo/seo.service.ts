@@ -113,6 +113,7 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;pa
 .cta{display:inline-block;background:var(--accent);color:#fff;text-decoration:none;font-weight:700;padding:10px 18px;border-radius:999px;white-space:nowrap}
 h1{font-size:clamp(26px,5vw,38px);font-weight:800;letter-spacing:-.03em;line-height:1.1;margin:0 0 12px}
 h2{font-size:20px;font-weight:800;letter-spacing:-.02em;margin:32px 0 12px}
+h3{font-size:16px;font-weight:700;margin:20px 0 6px;color:var(--ink)}
 .lead{font-size:17px;color:var(--muted);margin:0 0 28px}
 .lead strong{color:var(--ink);font-weight:700}
 ul.assos{list-style:none;padding:0;margin:0;display:grid;gap:8px}
@@ -205,6 +206,28 @@ ${o.body}
     const themes = catsPresent.map((id) => (CAT_LABEL[id] ?? "").toLowerCase()).filter(Boolean);
     const themesTxt = themes.length ? themes.join(", ") : "sport, culture, solidarité, environnement, éducation";
 
+    // FAQ : réponses courtes et autonomes (titres en questions). Restituées en
+    // HTML visible ET en schema FAQPage -> citables par les moteurs IA (AI Overviews,
+    // ChatGPT, Perplexity) qui répondent aux requêtes "associations à <ville>".
+    const faq: [string, string][] = [
+      [
+        `Combien d'associations y a-t-il à ${c.display} ?`,
+        `${c.display} (${deptNom}) compte ${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} sur GemensKarte, issues du Répertoire National des Associations (RNA).`,
+      ],
+      [
+        `Comment trouver une association à ${c.display} ?`,
+        `Parcourez la liste par thème ci-dessus (${themesTxt}), ou ouvrez la carte interactive de GemensKarte pour localiser les associations de ${c.display} et accéder à leurs coordonnées et à leur site.`,
+      ],
+      [
+        `Quels types d'associations trouve-t-on à ${c.display} ?`,
+        themes.length
+          ? `À ${c.display}, on trouve notamment des associations ${themes.join(", ")}.`
+          : `On trouve à ${c.display} des associations dans des domaines variés : sport, culture, solidarité, environnement, éducation.`,
+      ],
+    ];
+    const faqHtml = `<h2>Questions fréquentes sur les associations à ${esc(c.display)}</h2>\n` +
+      faq.map(([q, a]) => `<h3>${esc(q)}</h3>\n<p class="lead">${esc(a)}</p>`).join("\n");
+
     const title = `Associations à ${c.display} (${deptNom}) — annuaire des assos`;
     const desc = `Les ${c.n} associations de ${c.display} (${deptNom}) : ${themesTxt}. Trouvez une association à ${c.display}, ses coordonnées et son site sur GemensKarte.`;
     const jsonld = JSON.stringify([
@@ -218,12 +241,20 @@ ${o.body}
         [deptNom, `${BASE}/${c.deptSlug}`],
         [c.display, `${BASE}/${c.deptSlug}/${c.slug}`],
       ]),
+      {
+        "@context": "https://schema.org", "@type": "FAQPage",
+        mainEntity: faq.map(([q, a]) => ({
+          "@type": "Question", name: q,
+          acceptedAnswer: { "@type": "Answer", text: a },
+        })),
+      },
     ]);
     const body = `
 <h1>Associations à ${esc(c.display)} (${esc(deptNom)})</h1>
 <p class="lead">Vous cherchez une <strong>association à ${esc(c.display)}</strong> ? GemensKarte référence ${c.n} association${c.n > 1 ? "s" : ""} à ${esc(c.display)}, dans le département ${esc(deptNom)} (${esc(region)}) — ${esc(themesTxt)}. Retrouvez-les ci-dessous, ou explorez-les sur la <a href="/">carte interactive</a>. Voir aussi <a href="/${c.deptSlug}">toutes les communes — ${esc(deptNom)}</a>.</p>
 ${sections}
 ${reste}
+${faqHtml}
 ${voisines ? `<p class="lead" style="margin-top:32px">Associations dans d'autres communes du ${esc(deptNom)} :</p>\n<div class="deps">${voisines}</div>` : ""}`;
     return this.doc({ title, desc, canonical: `${BASE}/${c.deptSlug}/${c.slug}`, jsonld, body });
   }
