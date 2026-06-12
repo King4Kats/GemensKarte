@@ -10,8 +10,8 @@ set -euo pipefail
 
 REPO="${RNA_REPO:-King4Kats/GemensKarte}"
 TAG="${RNA_TAG:-rna-latest}"
-OUT="data/rna/rna_covered.csv.gz"
-URL="https://github.com/$REPO/releases/download/$TAG/rna_covered.csv.gz"
+OUT="data/rna/rna_france.csv.gz"
+URL="https://github.com/$REPO/releases/download/$TAG/rna_france.csv.gz"
 
 mkdir -p data/rna
 echo "Téléchargement du RNA depuis la Release $TAG…"

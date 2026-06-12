@@ -44,6 +44,9 @@ services:
       BAN_GEOCODER_URL: https://api-adresse.data.gouv.fr
       # Jeton admin lu depuis le fichier .env (gitignoré). Vide -> routes admin fermées.
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+    # Données RNA montées depuis l'hôte (gros fichiers livrés sans reconstruire l'image).
+    volumes:
+      - ./data/rna:/app/data/rna
       # Formulaire de contact -> email. Définis SMTP_USER/SMTP_PASS dans .env (gitignoré).
       # Tant qu'ils sont vides, l'API n'envoie pas d'email (mode "console only").
       SMTP_USER: ${SMTP_USER:-}

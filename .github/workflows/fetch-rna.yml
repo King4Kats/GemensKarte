@@ -64,22 +64,17 @@ jobs:
           esac
           echo "lignes brutes : $(wc -l < rna.csv)"
 
-      - name: Filtrer le périmètre couvert et compresser
+      - name: Normaliser (toute la France) et compresser
         run: |
           set -euo pipefail
           mkdir -p data/rna
           echo "En-tête du fichier source :"
           head -1 rna.csv
           python3 - <<'PY'
-          import csv, gzip, sys
+          import csv, gzip
           csv.field_size_limit(10_000_000)
-          keep = {"22","29","35","56",          # Bretagne
-                  "44","49","53","72","85",      # Pays de la Loire
-                  "14","27","50","61","76",      # Normandie
-                  "09","11","12","30","31","32", # Occitanie (sans l'Hérault 34)
-                  "46","48","65","66","81","82"}
           src = "rna.csv"
-          dst = "data/rna/rna_covered.csv.gz"
+          dst = "data/rna/rna_france.csv.gz"
 
           # Détecte le séparateur sur la 1re ligne (l'agrégé peut être en ',' ou ';')
           with open(src, newline="", encoding="utf-8", errors="replace") as f:
@@ -94,25 +89,13 @@ jobs:
               header = next(r)
               print("colonnes :", ";".join(header))
               w.writerow(header)
-
-              low = [h.strip().lower() for h in header]
-              cands = ["adrs_codepostal", "adresse_codepostal", "code_postal", "codepostal", "cp"]
-              i = next((low.index(c) for c in cands if c in low), None)
-              if i is None:
-                  i = next((k for k, h in enumerate(low)
-                            if "codepostal" in h or "code_postal" in h
-                            or ("postal" in h and "cod" in h)), None)
-              if i is None:
-                  raise SystemExit("colonne code postal introuvable — en-tête ci-dessus")
-              print(f"colonne code postal : {header[i]!r} (index {i})")
-
               kept = 0
+              # TOUTE LA FRANCE : on ne filtre plus par département (RNA national complet).
               for row in r:
-                  if len(row) > i and row[i][:2] in keep:
-                      w.writerow(row); kept += 1
+                  w.writerow(row); kept += 1
           print(f"associations conservées : {kept}")
           PY
-          SZ=$(stat -c%s data/rna/rna_covered.csv.gz)
+          SZ=$(stat -c%s data/rna/rna_france.csv.gz)
           echo "taille gz : $SZ octets"
           # Publié en Release asset (plafond 2 Go), plus dans le dépôt : garde-fou large.
           if [ "$SZ" -gt 1900000000 ]; then
@@ -129,6 +112,6 @@ jobs:
           gh release view "$TAG" >/dev/null 2>&1 || \
             gh release create "$TAG" \
               --title "RNA — données courantes" \
-              --notes "Fichier RNA waldec filtré sur le périmètre couvert, régénéré automatiquement. Volumineux → publié ici plutôt que versionné. Récupération via scripts/get-rna.sh."
-          gh release upload "$TAG" data/rna/rna_covered.csv.gz --clobber
-          echo "Asset rna_covered.csv.gz publié sur la release $TAG."
+              --notes "Fichier RNA waldec national (toute la France), régénéré automatiquement. Volumineux → publié ici plutôt que versionné. Récupération via scripts/get-rna.sh."
+          gh release upload "$TAG" data/rna/rna_france.csv.gz --clobber
+          echo "Asset rna_france.csv.gz publié sur la release $TAG."
