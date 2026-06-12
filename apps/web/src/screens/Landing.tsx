@@ -201,6 +201,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             <a className="btn btn-sm" style={navLink} href="#carte">Choisir un territoire</a>
             <button className="btn btn-sm" style={navLink} onClick={() => setModal("recenser")}>Référencer mon asso</button>
             <a className="btn btn-sm" style={navLink} href="#stats">Les données</a>
+            <a className="btn btn-sm" style={navLink} href="#quarantaine">Trier les liens</a>
             <a className="btn btn-accent btn-sm" href="#dons" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <Icon name="heart" size={14} stroke={2.4} /> Soutenir
             </a>
@@ -234,6 +235,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
                     onClick={() => { setMenuOpen(false); setModal("recenser"); }}>Référencer mon asso</button>
                   <a className="btn btn-sm" style={{ ...navLink, justifyContent: "flex-start", width: "100%" }}
                     href="#stats" onClick={() => setMenuOpen(false)}>Les données</a>
+                  <a className="btn btn-sm" style={{ ...navLink, justifyContent: "flex-start", width: "100%" }}
+                    href="#quarantaine" onClick={() => setMenuOpen(false)}>Trier les liens</a>
                   <a className="btn btn-accent btn-sm" href="#dons" onClick={() => setMenuOpen(false)}
                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 4 }}>
                     <Icon name="heart" size={14} stroke={2.4} /> Soutenir
@@ -783,6 +786,28 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
               )}
             </div>
           )}
+        </div>
+      </section>
+
+      {/* ── Aider : tri collaboratif de la quarantaine ── */}
+      <section id="aider" style={{ padding: "88px clamp(24px, 8vw, 120px)", background: "var(--bg)" }}>
+        <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center" }}>
+          <span style={{ display: "inline-flex", color: "var(--accent)", marginBottom: 16 }}>
+            <Icon name="users" size={34} stroke={2.1} />
+          </span>
+          <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, letterSpacing: "-0.035em", color: "var(--ink)", margin: "0 0 14px", lineHeight: 1.1 }}>
+            Donne un coup de main 🔍
+          </h2>
+          <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 28px" }}>
+            Nos robots déterrent plein de liens (sites, réseaux, HelloAsso) mais ne sont pas toujours
+            <strong> sûrs</strong> qu'ils appartiennent à la bonne association. En quelques clics, tu peux
+            vérifier et trancher&nbsp;: <strong>garde</strong> les bons, <strong>jette</strong> les mauvais.
+            Chaque tri rend la carte plus juste — et c'est <strong>ouvert à tous</strong>. Merci&nbsp;! 💛
+          </p>
+          <a href="#quarantaine" className="btn btn-ink btn-md"
+            style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
+            <Icon name="check" size={17} stroke={2.4} /> Trier les liens
+          </a>
         </div>
       </section>
 
