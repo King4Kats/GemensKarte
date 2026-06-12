@@ -821,10 +821,10 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             Soutenir GemensKarte
           </h2>
           <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 28px" }}>
-            GemensKarte est <strong>gratuit et 100&nbsp;% bénévole</strong> — enfin, presque&nbsp;: nos robots
-            fouillent et vérifient le web <strong>24h/24</strong>, et tout ça consomme bien réel… de l'électricité
-            (et fait chauffer les machines). Vos dons paient le courant, l'hébergement, les noms de domaine
-            et le temps de développement — et aident à ouvrir de nouveaux territoires. Chaque coup de pouce compte.
+            GemensKarte est <strong>gratuit et entièrement bénévole</strong>. Mais derrière les coulisses,
+            des robots tournent sans relâche — et ça a un coût&nbsp;: électricité, hébergement, noms de domaine,
+            développement. Vos dons gardent le projet en vie et permettent d'aller plus loin. Merci pour chaque
+            contribution.
           </p>
           <a href={STRIPE_DON_URL} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-md"
             style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
