@@ -216,8 +216,11 @@ export function MapView({ initial, onHome, onPortal, dept }: {
     if (mapRef.current || !mapElRef.current) return;
     const map = L.map(mapElRef.current, { center: [46.67, -1.43], zoom: 9, zoomControl: false, scrollWheelZoom: true });
     L.control.zoom({ position: "bottomright", zoomInTitle: "Agrandir", zoomOutTitle: "Réduire" }).addTo(map);
-    L.tileLayer("https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png", {
-      attribution: "© <a href='https://www.openstreetmap.fr/'>OpenStreetMap France</a> | © <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors", subdomains: "abc", maxZoom: 20,
+    // Fond de carte Carto (CDN mondial rapide) — bien plus réactif que les tuiles
+    // OpenStreetMap France (souvent lentes/limitées). Fond clair, idéal pour les pins colorés.
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png", {
+      attribution: "© <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors © <a href='https://carto.com/attributions'>CARTO</a>",
+      subdomains: "abcd", maxZoom: 20,
     }).addTo(map);
     mapRef.current = map;
     setTimeout(() => map.invalidateSize(), 200);
