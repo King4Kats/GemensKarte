@@ -4,9 +4,9 @@
  * envoyer un formulaire de contact...) passent par l'objet `api` défini ici.
  * Centraliser ça évite de répéter des appels `fetch` un peu partout.
  */
-import type { Association, Paginated, Suggestion } from "@gemenskarte/shared";
+import type { Association, Paginated, QuarantineAssoc, Suggestion } from "@gemenskarte/shared";
 
-export type { Association, Suggestion };
+export type { Association, QuarantineAssoc, Suggestion };
 
 /** Stats d'un département (détail par territoire). */
 export interface TerritoryStat {
@@ -146,6 +146,24 @@ export const api = {
     getJSON<string[]>(
       `/search/match?q=${encodeURIComponent(q)}${department ? `&department=${department}` : ""}`,
     ),
+
+  // Tri collaboratif PUBLIC de la quarantaine (liens en attente d'arbitrage).
+  quarantine: {
+    // Liste paginée des fiches ayant des liens à arbitrer.
+    list: (page = 1, limit = 40) =>
+      getJSON<Paginated<QuarantineAssoc>>(`/associations/quarantine/public?page=${page}&limit=${limit}`),
+    // Garde (→ affiché) ou jette un lien. Renvoie "rate" si l'anti-rafale a coupé (429).
+    resolve: async (id: string, platform: string, action: "keep" | "drop"): Promise<"ok" | "rate"> => {
+      const res = await fetch(`${BASE}/associations/${id}/quarantine/public`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform, action }),
+      });
+      if (res.status === 429) return "rate";
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return "ok";
+    },
+  },
 };
 
 /* ---- Helpers de présentation (l'API RNA n'a pas tous les champs riches) ---- */

@@ -17,6 +17,7 @@ import {
 import { ZodValidationPipe } from "../common/zod-validation.pipe";
 import { AdminGuard } from "../common/admin.guard";
 import { RateLimitGuard } from "../common/rate-limit.guard";
+import { TriageRateLimitGuard } from "../common/triage-rate-limit.guard";
 import { AssociationsService } from "./associations.service";
 
 @Controller("associations")
@@ -49,6 +50,17 @@ export class AssociationsController {
     return this.service.listQuarantine(Number(page) || 1, Math.min(Number(limit) || 50, 200));
   }
 
+  /** GET /api/associations/quarantine/public — liste PUBLIQUE (tri collaboratif). */
+  // Volontairement ouverte à tous : c'est la file que la communauté vient trier.
+  // (déclarée avant :id pour ne pas être capturée par la route paramétrée).
+  @Get("quarantine/public")
+  listQuarantinePublic(
+    @Query("page") page = "1",
+    @Query("limit") limit = "50",
+  ): Promise<Paginated<QuarantineAssoc>> {
+    return this.service.listQuarantine(Number(page) || 1, Math.min(Number(limit) || 50, 200));
+  }
+
   /** GET /api/associations/:id — fiche complète. */
   @Get(":id")
   findOne(@Param("id", new ParseUUIDPipe()) id: string): Promise<Association> {
@@ -60,6 +72,18 @@ export class AssociationsController {
   @Patch(":id/quarantine")
   @UseGuards(AdminGuard)
   resolveQuarantine(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(ResolveQuarantineInput)) body: ResolveQuarantineInput,
+  ): Promise<void> {
+    return this.service.resolveQuarantine(id, body);
+  }
+
+  /** PATCH /api/associations/:id/quarantine/public — tri collaboratif (1 clic). */
+  // Public mais anti-rafale (TriageRateLimitGuard) : garde (→ social) ou jette un
+  // lien. Réutilise la même logique que l'admin ; tout reste tracé/réversible (meta).
+  @Patch(":id/quarantine/public")
+  @UseGuards(TriageRateLimitGuard)
+  resolveQuarantinePublic(
     @Param("id", new ParseUUIDPipe()) id: string,
     @Body(new ZodValidationPipe(ResolveQuarantineInput)) body: ResolveQuarantineInput,
   ): Promise<void> {
