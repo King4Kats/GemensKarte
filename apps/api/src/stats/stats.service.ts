@@ -62,6 +62,14 @@ export class StatsService {
     };
   }
 
+  /** Enregistre un hit de fréquentation anonyme (kind='page'|'region'). */
+  async track(visitor: string, kind: string, pathStr: string | null, dept: string | null) {
+    await this.db.execute(sql`
+      INSERT INTO visits (kind, path, dept, visitor)
+      VALUES (${kind}, ${pathStr}, ${dept}, ${visitor})
+    `);
+  }
+
   // Avancement des passes ciblées par plateforme (même calcul que progress.py) :
   // scannées / restantes / validées / %, pour l'afficher en direct sur l'accueil.
   async getProgress() {

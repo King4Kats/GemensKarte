@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Landing } from "./screens/Landing";
 import { MapView } from "./screens/MapView";
 import { Quarantine } from "./screens/Quarantine";
+import { api } from "./lib/api";
 import type { DeptMeta } from "./data/departements";
 
 type Screen = "landing" | "map" | "quarantaine";
@@ -40,10 +41,20 @@ export function App() {
     setScreen("landing");
   };
 
+  // Suivi de fréquentation anonyme : une « page vue » à chaque changement d'écran.
+  useEffect(() => { api.track("page", { path: screen }); }, [screen]);
+
+  // Ouvre un territoire (depuis la carte ou la popup) + compte la région consultée.
+  const openDept = (d: DeptMeta) => {
+    api.track("region", { dept: d.code });
+    setDept(d);
+    setScreen("map");
+  };
+
   return (
     <>
       {screen === "landing" && (
-        <Landing onSelect={(d) => { setDept(d); setScreen("map"); }} />
+        <Landing onSelect={openDept} />
       )}
       {screen === "map" && (
         <MapView

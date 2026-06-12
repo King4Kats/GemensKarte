@@ -147,6 +147,21 @@ export const api = {
       `/search/match?q=${encodeURIComponent(q)}${department ? `&department=${department}` : ""}`,
     ),
 
+  // Suivi de fréquentation anonyme (sans cookie). Fire-and-forget : on n'attend pas
+  // la réponse et on ignore les erreurs (ne doit jamais gêner l'utilisateur).
+  track: (kind: "page" | "region", data: { path?: string; dept?: string } = {}) => {
+    try {
+      void fetch(`${BASE}/stats/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, ...data }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      /* ignore */
+    }
+  },
+
   // Tri collaboratif PUBLIC de la quarantaine (liens en attente d'arbitrage).
   quarantine: {
     // Liste paginée des fiches ayant des liens à arbitrer.
