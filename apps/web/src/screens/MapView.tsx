@@ -235,6 +235,9 @@ export function MapView({ initial, onHome, onPortal, dept }: {
     if (!clusterRef.current) {
       clusterRef.current = L.markerClusterGroup({
         chunkedLoading: true,
+        // Ne garde dans le DOM que les marqueurs DANS la vue -> indispensable avec
+        // des dizaines de milliers de points (zoom/pan fluide même à l'échelle nationale).
+        removeOutsideVisibleBounds: true,
         showCoverageOnHover: false,
         maxClusterRadius: 56,
         spiderfyOnMaxZoom: true,
@@ -283,14 +286,20 @@ export function MapView({ initial, onHome, onPortal, dept }: {
       const marker = L.marker([p.lat, p.lng], { icon });
       (marker.options as Record<string, unknown>).catId = p.categoryId; // pour la couleur du cluster
 
-      const popHtml =
-        `<div class="cm-pop-inner" style="--cat:${c.color}">` +
-        `<div class="pp-cat">${c.label}</div>` +
-        `<div class="pp-name">${p.name}</div>` +
-        `<div class="pp-city"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>${p.city ?? ""}</div>` +
-        `</div>`;
-      marker.bindPopup(popHtml, { className: "cm-pop", closeButton: false, offset: [0, -6], autoPan: false });
-      marker.on("mouseover", () => marker.openPopup());
+      // Popup PARESSEUSE : on ne construit la mini-fiche qu'au 1er survol (au lieu de
+      // la générer pour des dizaines de milliers de marqueurs d'emblée).
+      marker.on("mouseover", () => {
+        if (!marker.getPopup()) {
+          const popHtml =
+            `<div class="cm-pop-inner" style="--cat:${c.color}">` +
+            `<div class="pp-cat">${c.label}</div>` +
+            `<div class="pp-name">${p.name}</div>` +
+            `<div class="pp-city"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>${p.city ?? ""}</div>` +
+            `</div>`;
+          marker.bindPopup(popHtml, { className: "cm-pop", closeButton: false, offset: [0, -6], autoPan: false });
+        }
+        marker.openPopup();
+      });
       marker.on("mouseout", () => marker.closePopup());
       marker.on("click", () => void openById(p.id));
       return marker;
