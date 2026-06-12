@@ -64,6 +64,7 @@ const COLS = sql`
 function mapRow(r: Row): Association {
   const meta = (r.meta ?? {}) as {
     blurb?: string; members?: number; founded?: number; needs?: string; action?: string;
+    geoApprox?: boolean;
     qualityScore?: { score: number; tier: "A" | "B" | "C" | "D"; flags?: string[] };
     events?: Array<{ title?: string; start?: string; end?: string; dateLabel?: string;
       city?: string; place?: string; url?: string; image?: string; matchedAsso?: boolean; distKm?: number }>;
@@ -99,6 +100,7 @@ function mapRow(r: Row): Association {
     status: r.status,
     source: r.source,
     distanceM: r.distance_m ?? null,
+    geoApprox: meta.geoApprox === true,
   };
 }
 
@@ -180,7 +182,7 @@ export class AssociationsService {
     features: Array<{
       type: "Feature";
       geometry: { type: "Point"; coordinates: [number, number] };
-      properties: { id: string; name: string; categoryId: string; city: string | null };
+      properties: { id: string; name: string; categoryId: string; city: string | null; approx: boolean };
     }>;
   }> {
     const where = this.buildWhere(q);
@@ -191,8 +193,10 @@ export class AssociationsService {
       city: string | null;
       lng: number;
       lat: number;
+      geo_approx: boolean;
     }>(sql`
-      SELECT id, name, category_id, city, ST_X(location) AS lng, ST_Y(location) AS lat
+      SELECT id, name, category_id, city, ST_X(location) AS lng, ST_Y(location) AS lat,
+             (meta->>'geoApprox') = 'true' AS geo_approx
       FROM associations
       WHERE ${where} AND location IS NOT NULL
         -- Exclut les points (0,0) : échecs de géocodage stockés à tort en Point(0,0)
@@ -207,7 +211,7 @@ export class AssociationsService {
       features: rows.rows.map((r) => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: [r.lng, r.lat] },
-        properties: { id: r.id, name: r.name, categoryId: r.category_id, city: r.city },
+        properties: { id: r.id, name: r.name, categoryId: r.category_id, city: r.city, approx: !!r.geo_approx },
       })),
     };
   }

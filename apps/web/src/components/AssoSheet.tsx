@@ -190,6 +190,14 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
                     <Icon name="calendar" size={15} stroke={2.2} />Depuis {asso.founded}
                   </span>
                 )}
+                {asso.geoApprox && (
+                  <span
+                    title="Adresse précise non disponible : l'association est positionnée au centre de sa commune."
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--muted)", fontStyle: "italic" }}
+                  >
+                    <Icon name="pin" size={14} stroke={2.2} /> localisation approximative
+                  </span>
+                )}
               </div>
             </div>
 

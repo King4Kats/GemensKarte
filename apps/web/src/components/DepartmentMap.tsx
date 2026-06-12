@@ -12,6 +12,8 @@ import {
 export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void }) {
   const [hover, setHover] = useState<string | null>(null); // code du département survolé
   const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []); // tous les codes dessinés
+  // DROM-COM : couverts mais sans tracé sur la carte hexagonale -> vignettes cliquables.
+  const dromCodes = useMemo(() => Object.keys(COVERED).filter((c) => !(c in FR_DEPT_PATHS)), []);
 
   // Le département survolé est rendu en dernier -> au-dessus des voisins (z-order SVG).
   const ordered = useMemo(() => {
@@ -70,6 +72,37 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
           );
         })}
       </svg>
+
+      {/* Outre-mer (DROM) : pas de tracé sur la carte hexagonale -> vignettes cliquables. */}
+      {dromCodes.length > 0 && (
+        <div style={{ marginTop: 18, width: "100%", maxWidth: 520 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textAlign: "center", marginBottom: 8 }}>
+            Outre-mer
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
+            {dromCodes.map((code) => {
+              const m = COVERED[code];
+              const col = STATE_COLOR[m.state];
+              return (
+                <button
+                  key={code}
+                  onClick={() => onSelect(m)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 14px",
+                    borderRadius: "var(--radius-pill)", cursor: "pointer", fontFamily: "var(--font)",
+                    fontWeight: 700, fontSize: 13, color: col,
+                    border: `1.5px solid color-mix(in srgb, ${col} 40%, white)`,
+                    background: `color-mix(in srgb, ${col} 12%, white)`,
+                  }}
+                >
+                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: col }} />
+                  {m.nom}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Légende : code couleur des états de scrap */}
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 16, marginTop: 16 }}>

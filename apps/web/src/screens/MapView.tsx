@@ -287,7 +287,7 @@ export function MapView({ initial, onHome, onPortal, dept }: {
       const c = catById(p.categoryId);
       const icon = L.divIcon({
         className: "",
-        html: `<div class="confetti-pin" data-id="${p.id}" style="--cat:${c.color}"><span class="pin-dot"></span></div>`,
+        html: `<div class="confetti-pin" data-id="${p.id}" style="--cat:${c.color}${p.approx ? ";opacity:.45" : ""}"><span class="pin-dot"></span></div>`,
         iconSize: [30, 30], iconAnchor: [15, 15],
       });
       const marker = L.marker([p.lat, p.lng], { icon });

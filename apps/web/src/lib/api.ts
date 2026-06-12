@@ -83,6 +83,7 @@ export interface GeoPoint {
   city: string | null;
   lng: number;
   lat: number;
+  approx?: boolean; // localisation approximative (centre de la commune)
 }
 
 // Format renvoyé par le serveur pour les données géo (standard "GeoJSON").
@@ -90,7 +91,7 @@ export interface GeoPoint {
 interface GeoFeatureCollection {
   features: Array<{
     geometry: { coordinates: [number, number] };
-    properties: { id: string; name: string; categoryId: string; city: string | null };
+    properties: { id: string; name: string; categoryId: string; city: string | null; approx?: boolean };
   }>;
 }
 

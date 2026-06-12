@@ -78,6 +78,8 @@ export const Association = z.object({
   })).optional(),
   /** Distance en mètres depuis le point `near`, si fourni dans la requête. */
   distanceM: z.number().nullable().optional(),
+  /** Localisation approximative (posée au centre de la commune, faute d'adresse précise). */
+  geoApprox: z.boolean().optional(),
 });
 export type Association = z.infer<typeof Association>;
 
