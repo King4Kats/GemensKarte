@@ -4,7 +4,7 @@
  * avec la liste des associations en clair -> indexable par Google (la SPA, en JS,
  * ne se référence pas bien sur "association Challans").
  *
- * Couvre la Vendée + l'Occitanie (sans l'Hérault) — voir territoires.ts.
+ * Couvre TOUTE la France (métropole + DROM) — voir territoires.ts.
  * Ces pages ne sont PAS mises en avant dans le site (on n'y arrive que via Google) ;
  * elles renvoient vers la carte interactive. Le sitemap.xml les liste toutes.
  */
@@ -122,6 +122,16 @@ ${o.body}
 </div></body></html>`;
   }
 
+  /** Fil d'Ariane schema.org (BreadcrumbList) : aide Google à afficher le chemin. */
+  private breadcrumb(items: [string, string][]): object {
+    return {
+      "@context": "https://schema.org", "@type": "BreadcrumbList",
+      itemListElement: items.map(([name, url], i) => ({
+        "@type": "ListItem", position: i + 1, name, item: url,
+      })),
+    };
+  }
+
   /** Petite barre de liens vers les autres départements couverts (cross-linking crawl). */
   private autresDepts(currentSlug?: string): string {
     const links = Object.values(SEO_DEPARTEMENTS)
@@ -156,11 +166,18 @@ ${o.body}
 
     const title = `Associations à ${c.display} (${deptNom}) — GemensKarte`;
     const desc = `Les ${c.n} associations de ${c.display} (${deptNom}) : sport, culture, solidarité, environnement, éducation… Coordonnées et liens sur GemensKarte.`;
-    const jsonld = JSON.stringify({
-      "@context": "https://schema.org", "@type": "ItemList",
-      name: `Associations à ${c.display} (${deptNom})`, numberOfItems: c.n,
-      itemListElement: items.slice(0, 100).map((a, i) => ({ "@type": "ListItem", position: i + 1, name: a.name })),
-    });
+    const jsonld = JSON.stringify([
+      {
+        "@context": "https://schema.org", "@type": "ItemList",
+        name: `Associations à ${c.display} (${deptNom})`, numberOfItems: c.n,
+        itemListElement: items.slice(0, 100).map((a, i) => ({ "@type": "ListItem", position: i + 1, name: a.name })),
+      },
+      this.breadcrumb([
+        ["Accueil", `${BASE}/`],
+        [deptNom, `${BASE}/${c.deptSlug}`],
+        [c.display, `${BASE}/${c.deptSlug}/${c.slug}`],
+      ]),
+    ]);
     const body = `
 <h1>Associations à ${esc(c.display)} (${esc(deptNom)})</h1>
 <p class="lead">${c.n} association${c.n > 1 ? "s" : ""} référencée${c.n > 1 ? "s" : ""} à ${esc(c.display)} — sport, culture, solidarité, environnement, éducation… Explorez-les sur la <a href="/">carte interactive de GemensKarte</a>. Voir <a href="/${c.deptSlug}">toutes les communes — ${esc(deptNom)}</a>.</p>
@@ -183,6 +200,10 @@ ${reste}`;
     ).join("\n");
     const title = `Associations par commune — ${nom} — GemensKarte`;
     const desc = `${nom} : ${communes.length} communes et leurs ${total} associations référencées — trouvez les assos près de chez vous.`;
+    const jsonld = JSON.stringify(this.breadcrumb([
+      ["Accueil", `${BASE}/`],
+      [nom, `${BASE}/${deptSlug}`],
+    ]));
     const body = `
 <h1>${esc(nom)} — associations par commune</h1>
 <p class="lead">${communes.length} communes · ${total} associations référencées. Choisissez une commune, ou explorez la <a href="/">carte interactive</a>.</p>
@@ -191,7 +212,7 @@ ${liens}
 </div>
 <p class="lead" style="margin-top:32px">Autres territoires couverts :</p>
 ${this.autresDepts(deptSlug)}`;
-    return this.doc({ title, desc, canonical: `${BASE}/${deptSlug}`, body });
+    return this.doc({ title, desc, canonical: `${BASE}/${deptSlug}`, jsonld, body });
   }
 
   /** Index RACINE : tous les territoires couverts (départements), groupés par région. */
