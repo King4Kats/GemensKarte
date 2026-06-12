@@ -6,6 +6,7 @@
  * État en mémoire (Map au niveau du fichier), suffisant pour un petit service.
  */
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { clientIp } from "./client-ip";
 
 const WINDOW_MS = 60_000; // fenêtre glissante d'une minute
 const MAX_HITS = 30; // au-delà de 30 arbitrages/minute pour une même IP -> pause forcée
@@ -15,9 +16,8 @@ const hits = new Map<string, number[]>();
 export class TriageRateLimitGuard implements CanActivate {
   canActivate(ctx: ExecutionContext): boolean {
     const req = ctx.switchToHttp().getRequest();
-    // Derrière nginx/Cloudflare la vraie IP est dans x-forwarded-for.
-    const fwd = req.headers["x-forwarded-for"];
-    const ip = String((Array.isArray(fwd) ? fwd[0] : fwd) || req.ip || "?").split(",")[0].trim();
+    // IP extraite de façon NON forgeable (cf-connecting-ip / dernière entrée XFF).
+    const ip = clientIp(req);
 
     const now = Date.now();
     const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);

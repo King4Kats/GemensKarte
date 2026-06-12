@@ -12,6 +12,12 @@ import * as nodemailer from "nodemailer";
 // d'environnement) ; si elle n'est pas définie, on utilise une adresse par défaut.
 const DEST = process.env.CONTACT_EMAIL ?? "contact@example.com";
 
+// Échappe le HTML des champs saisis par le visiteur avant insertion dans le mail :
+// sans ça, un nom contenant des balises s'exécuterait dans le client mail de l'admin.
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 @Injectable()
 export class ContactService {
   private readonly logger = new Logger(ContactService.name);
@@ -63,12 +69,12 @@ export class ContactService {
     const html = `
       <h2>Nouvelle demande de référencement</h2>
       <table>
-        <tr><td><b>Association</b></td><td>${data.name}</td></tr>
-        <tr><td><b>Catégorie</b></td><td>${data.category}</td></tr>
-        <tr><td><b>Ville</b></td><td>${data.city}${data.postalCode ? ` (${data.postalCode})` : ""}</td></tr>
-        <tr><td><b>Email contact</b></td><td>${data.email}</td></tr>
-        ${data.website ? `<tr><td><b>Site web</b></td><td>${data.website}</td></tr>` : ""}
-        <tr><td><b>Description</b></td><td>${data.description}</td></tr>
+        <tr><td><b>Association</b></td><td>${esc(data.name)}</td></tr>
+        <tr><td><b>Catégorie</b></td><td>${esc(data.category)}</td></tr>
+        <tr><td><b>Ville</b></td><td>${esc(data.city)}${data.postalCode ? ` (${esc(data.postalCode)})` : ""}</td></tr>
+        <tr><td><b>Email contact</b></td><td>${esc(data.email)}</td></tr>
+        ${data.website ? `<tr><td><b>Site web</b></td><td>${esc(data.website)}</td></tr>` : ""}
+        <tr><td><b>Description</b></td><td>${esc(data.description)}</td></tr>
       </table>
     `;
     await this.send(`[GemensKarte] Référencement — ${data.name}`, html);
@@ -82,10 +88,10 @@ export class ContactService {
     const html = `
       <h2>Demande de déférencement</h2>
       <table>
-        <tr><td><b>Association</b></td><td>${data.name}</td></tr>
-        <tr><td><b>Raison</b></td><td>${data.reason}</td></tr>
-        ${data.message ? `<tr><td><b>Message</b></td><td>${data.message}</td></tr>` : ""}
-        ${data.email ? `<tr><td><b>Email contact</b></td><td>${data.email}</td></tr>` : ""}
+        <tr><td><b>Association</b></td><td>${esc(data.name)}</td></tr>
+        <tr><td><b>Raison</b></td><td>${esc(data.reason)}</td></tr>
+        ${data.message ? `<tr><td><b>Message</b></td><td>${esc(data.message)}</td></tr>` : ""}
+        ${data.email ? `<tr><td><b>Email contact</b></td><td>${esc(data.email)}</td></tr>` : ""}
       </table>
     `;
     await this.send(`[GemensKarte] Déférencement — ${data.name}`, html);

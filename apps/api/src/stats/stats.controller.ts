@@ -5,10 +5,18 @@
  */
 import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { createHash } from "node:crypto";
+import { clientIp } from "../common/client-ip";
 import { getEnv } from "../config/env";
 import { StatsService } from "./stats.service";
 
 const BOT_RE = /bot|crawl|spider|slurp|preview|headless|monitor|curl|wget|python|axios|fetch\b/i;
+
+// Anti-inondation du suivi : une même IP ne peut pas écrire plus de TRACK_MAX
+// événements/minute (une navigation normale en fait quelques-uns ; un script qui
+// mitraille remplirait la table visits et fausserait les statistiques).
+const TRACK_WINDOW_MS = 60_000;
+const TRACK_MAX = 120;
+const trackHits = new Map<string, number[]>();
 
 // @Controller("stats") = toutes les routes de cette classe commencent par /stats.
 @Controller("stats")
@@ -41,8 +49,15 @@ export class StatsController {
   async track(@Req() req: { headers: Record<string, unknown>; ip?: string }, @Body() body: unknown) {
     const ua = String(req.headers["user-agent"] ?? "");
     if (!ua || BOT_RE.test(ua)) return { ok: true }; // on ignore les robots
-    const fwd = req.headers["x-forwarded-for"];
-    const ip = String((Array.isArray(fwd) ? fwd[0] : fwd) || req.ip || "?").split(",")[0].trim();
+    // IP non forgeable (cf-connecting-ip / dernière entrée XFF) : sert au hash
+    // anonyme ET au plafond anti-inondation ci-dessous.
+    const ip = clientIp(req);
+    const now = Date.now();
+    const recent = (trackHits.get(ip) ?? []).filter((t) => now - t < TRACK_WINDOW_MS);
+    if (recent.length >= TRACK_MAX) return { ok: true }; // silencieux : on n'enregistre plus
+    recent.push(now);
+    trackHits.set(ip, recent);
+    if (trackHits.size > 10_000) trackHits.clear(); // garde-fou mémoire
     const day = new Date().toISOString().slice(0, 10);
     const salt = getEnv().ADMIN_TOKEN || "gk";
     const visitor = createHash("sha256").update(`${ip}|${ua}|${day}|${salt}`).digest("hex").slice(0, 16);

@@ -175,10 +175,14 @@ ${o.body}
     const items = rows.rows;
 
     // Une ligne <li> d'association (nom + catégorie + éventuel lien site officiel).
+    // Le lien n'est rendu que s'il commence par http(s) : esc() neutralise les
+    // guillemets mais pas un schéma dangereux du type javascript: (défense en
+    // profondeur — la validation d'URL en amont accepte n'importe quel schéma).
     const renderLi = (a: typeof items[number]): string => {
       const label = CAT_LABEL[a.category_id] ?? "Association";
       const site = a.social?.website || a.website || null;
-      const link = site ? ` <a href="${esc(site)}" target="_blank" rel="nofollow noopener">site</a>` : "";
+      const safeSite = site && /^https?:\/\//i.test(site) ? site : null;
+      const link = safeSite ? ` <a href="${esc(safeSite)}" target="_blank" rel="nofollow noopener">site</a>` : "";
       return `  <li><span class="nom">${esc(a.name)}</span> <span class="cat">· ${esc(label)}</span>${link}</li>`;
     };
 

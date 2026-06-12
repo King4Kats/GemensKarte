@@ -5,6 +5,7 @@
  * suffisante pour un petit service auto-hébergé.
  */
 import { CanActivate, ExecutionContext, HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { clientIp } from "./client-ip";
 
 const WINDOW_MS = 60_000; // fenêtre glissante d'une minute
 const MAX_HITS = 6; // au-delà de 6 envois/minute pour une même IP -> refusé
@@ -16,10 +17,10 @@ const hits = new Map<string, number[]>();
 export class RateLimitGuard implements CanActivate {
   canActivate(ctx: ExecutionContext): boolean {
     const req = ctx.switchToHttp().getRequest();
-    // Derrière un proxy (nginx/Cloudflare), la vraie IP du visiteur est dans
-    // l'en-tête `x-forwarded-for` ; sinon on prend l'IP vue directement.
-    const fwd = req.headers["x-forwarded-for"];
-    const ip = String((Array.isArray(fwd) ? fwd[0] : fwd) || req.ip || "?").split(",")[0].trim();
+    // IP extraite de façon NON forgeable (cf-connecting-ip / dernière entrée de
+    // x-forwarded-for) : prendre la première entrée, fournie par le client,
+    // permettrait de contourner la limite en forgeant une IP par requête.
+    const ip = clientIp(req);
 
     const now = Date.now();
     // On ne garde que les envois encore dans la fenêtre d'une minute.
