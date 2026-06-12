@@ -155,12 +155,12 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
 
       <main style={{ maxWidth: 720, margin: "0 auto", padding: "clamp(20px, 5vw, 40px) 16px 80px" }}>
         <h1 style={{ fontSize: "clamp(24px, 5vw, 32px)", fontWeight: 800, color: "var(--ink)", margin: "0 0 8px", letterSpacing: "-0.02em" }}>
-          Tri collaboratif des liens 🔍
+          Tri collaboratif des liens
         </h1>
         <p style={{ color: "var(--ink-2)", fontSize: 15, lineHeight: 1.6, margin: "0 0 8px" }}>
           Nos robots ont trouvé ces liens mais ne sont pas <strong>sûrs</strong> qu'ils
-          appartiennent bien à l'association. Aide-nous : <strong>ouvre le lien</strong>, vérifie,
-          puis <strong>garde</strong> (il s'affichera sur le site) ou <strong>jette</strong>. Merci ! 💛
+          appartiennent bien à l'association. Aidez-nous : <strong>ouvrez le lien</strong>, vérifiez,
+          puis <strong>gardez</strong> (il s'affichera sur le site) ou <strong>jetez</strong>. Merci !
         </p>
         <p style={{ color: "var(--muted)", fontSize: 13, margin: "0 0 24px" }}>
           Il faut ouvrir le lien avant de pouvoir juger. 1 clic = appliqué tout de suite.
@@ -173,7 +173,7 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
             color: "#7a5200", borderRadius: 12, padding: "12px 16px", margin: "0 0 18px",
             fontSize: 14, fontWeight: 600,
           }}>
-            ⏳ Tu vas un peu vite — petite pause de {pauseLeft}s, puis c'est reparti.
+            Vous allez un peu vite — petite pause de {pauseLeft}s, puis c'est reparti.
           </div>
         )}
 
@@ -230,7 +230,7 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
                 </a>
                 <div style={{ display: "flex", gap: 8, width: isMobile ? "100%" : "auto" }}>
                   <button onClick={() => act(it, "keep")} disabled={!isOpen || paused}
-                    title={isOpen ? "" : "Ouvre d'abord le lien"}
+                    title={isOpen ? "" : "Ouvrez d'abord le lien"}
                     className="btn btn-md"
                     style={{
                       flex: isMobile ? 1 : "0 0 auto", display: "inline-flex", justifyContent: "center",
@@ -241,7 +241,7 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
                     <Icon name="check" size={16} stroke={2.6} /> Garder
                   </button>
                   <button onClick={() => act(it, "drop")} disabled={!isOpen || paused}
-                    title={isOpen ? "" : "Ouvre d'abord le lien"}
+                    title={isOpen ? "" : "Ouvrez d'abord le lien"}
                     className="btn btn-md"
                     style={{
                       flex: isMobile ? 1 : "0 0 auto", display: "inline-flex", justifyContent: "center",
@@ -267,10 +267,12 @@ export function Quarantine({ onHome }: { onHome: () => void }) {
             textAlign: "center", color: "var(--ink-2)", padding: "48px 16px",
             background: "var(--bg)", border: "1px solid var(--hairline)", borderRadius: "var(--radius)",
           }}>
-            <div style={{ fontSize: 34, marginBottom: 8 }}>🎉</div>
+            <div style={{ display: "inline-flex", color: "#16a34a", marginBottom: 8 }}>
+              <Icon name="check" size={42} stroke={2.4} />
+            </div>
             <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 18 }}>Tout est trié, merci !</div>
             <div style={{ fontSize: 14, marginTop: 6 }}>
-              Reviens plus tard : les robots trouvent de nouveaux liens en continu.
+              Revenez plus tard : les robots trouvent de nouveaux liens en continu.
             </div>
             <button onClick={onHome} className="btn btn-accent btn-md" style={{ marginTop: 18 }}>
               Retour à l'accueil

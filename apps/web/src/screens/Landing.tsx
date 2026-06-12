@@ -796,13 +796,13 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             <Icon name="users" size={34} stroke={2.1} />
           </span>
           <h2 style={{ fontSize: "clamp(26px, 4vw, 40px)", fontWeight: 900, letterSpacing: "-0.035em", color: "var(--ink)", margin: "0 0 14px", lineHeight: 1.1 }}>
-            Donne un coup de main 🔍
+            Donnez un coup de main
           </h2>
           <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 28px" }}>
             Nos robots déterrent plein de liens (sites, réseaux, HelloAsso) mais ne sont pas toujours
-            <strong> sûrs</strong> qu'ils appartiennent à la bonne association. En quelques clics, tu peux
-            vérifier et trancher&nbsp;: <strong>garde</strong> les bons, <strong>jette</strong> les mauvais.
-            Chaque tri rend la carte plus juste — et c'est <strong>ouvert à tous</strong>. Merci&nbsp;! 💛
+            <strong> sûrs</strong> qu'ils appartiennent à la bonne association. En quelques clics, vous pouvez
+            vérifier et trancher&nbsp;: <strong>gardez</strong> les bons, <strong>jetez</strong> les mauvais.
+            Chaque tri rend la carte plus juste — et c'est <strong>ouvert à tous</strong>. Merci&nbsp;!
           </p>
           <a href="#quarantaine" className="btn btn-ink btn-md"
             style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
@@ -823,8 +823,8 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           <p style={{ fontSize: 17, lineHeight: 1.7, color: "var(--ink-2)", margin: "0 0 28px" }}>
             GemensKarte est <strong>gratuit et 100&nbsp;% bénévole</strong> — enfin, presque&nbsp;: nos robots
             fouillent et vérifient le web <strong>24h/24</strong>, et tout ça consomme bien réel… de l'électricité
-            (et ça fait chauffer les machines 😅). Tes dons paient le courant, l'hébergement, les noms de domaine
-            et le temps de développement — et aident à ouvrir de nouveaux territoires. Chaque coup de pouce compte 💛.
+            (et fait chauffer les machines). Vos dons paient le courant, l'hébergement, les noms de domaine
+            et le temps de développement — et aident à ouvrir de nouveaux territoires. Chaque coup de pouce compte.
           </p>
           <a href={STRIPE_DON_URL} target="_blank" rel="noopener noreferrer" className="btn btn-accent btn-md"
             style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>

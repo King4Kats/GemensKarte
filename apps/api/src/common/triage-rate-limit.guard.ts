@@ -23,7 +23,7 @@ export class TriageRateLimitGuard implements CanActivate {
     const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
     if (recent.length >= MAX_HITS) {
       throw new HttpException(
-        "Tu tries trop vite 🙂 petite pause d'une minute.",
+        "Vous triez trop vite, petite pause d'une minute.",
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
