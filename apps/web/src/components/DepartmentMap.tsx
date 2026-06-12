@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { FR_VIEWBOX, FR_DEPT_PATHS } from "../data/fr-departements-paths";
+import { FR_DROM_VIEWBOX, FR_DROM_PATHS } from "../data/fr-drom-paths";
 import {
   COVERED, STATE_COLOR, STATE_LABEL, STATE_ORDER, isCovered, colorOf, type DeptMeta,
 } from "../data/departements";
@@ -12,8 +13,9 @@ import {
 export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void }) {
   const [hover, setHover] = useState<string | null>(null); // code du département survolé
   const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []); // tous les codes dessinés
-  // DROM-COM : couverts mais sans tracé sur la carte hexagonale -> vignettes cliquables.
-  const dromCodes = useMemo(() => Object.keys(COVERED).filter((c) => !(c in FR_DEPT_PATHS)), []);
+  // DROM : tracés dans un repère propre (loin de l'hexagone) -> rendus en petites
+  // silhouettes cliquables sous la carte. On ne garde que ceux qui sont couverts.
+  const droms = useMemo(() => FR_DROM_PATHS.filter((d) => d.code in COVERED), []);
 
   // Le département survolé est rendu en dernier -> au-dessus des voisins (z-order SVG).
   const ordered = useMemo(() => {
@@ -73,30 +75,47 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
         })}
       </svg>
 
-      {/* Outre-mer (DROM) : pas de tracé sur la carte hexagonale -> vignettes cliquables. */}
-      {dromCodes.length > 0 && (
+      {/* Outre-mer (DROM) : vraies silhouettes SVG, cliquables comme les départements. */}
+      {droms.length > 0 && (
         <div style={{ marginTop: 18, width: "100%", maxWidth: 520 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textAlign: "center", marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textAlign: "center", marginBottom: 10 }}>
             Outre-mer
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8 }}>
-            {dromCodes.map((code) => {
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 18 }}>
+            {droms.map(({ code, nom, d }) => {
               const m = COVERED[code];
-              const col = STATE_COLOR[m.state];
+              const col = colorOf(code)!;
+              const isH = hover === code;
               return (
                 <button
                   key={code}
                   onClick={() => onSelect(m)}
+                  onMouseEnter={() => setHover(code)}
+                  onMouseLeave={() => setHover(null)}
+                  aria-label={nom}
                   style={{
-                    display: "inline-flex", alignItems: "center", gap: 7, height: 34, padding: "0 14px",
-                    borderRadius: "var(--radius-pill)", cursor: "pointer", fontFamily: "var(--font)",
-                    fontWeight: 700, fontSize: 13, color: col,
-                    border: `1.5px solid color-mix(in srgb, ${col} 40%, white)`,
-                    background: `color-mix(in srgb, ${col} 12%, white)`,
+                    display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
+                    border: "none", background: "none", cursor: "pointer",
+                    fontFamily: "var(--font)", padding: 0,
                   }}
                 >
-                  <span style={{ width: 9, height: 9, borderRadius: "50%", background: col }} />
-                  {m.nom}
+                  <svg viewBox={FR_DROM_VIEWBOX} width={52} height={52} aria-hidden="true"
+                    style={{ overflow: "visible" }}>
+                    <path
+                      d={d}
+                      style={{
+                        fill: isH ? col : `color-mix(in srgb, ${col} 30%, white)`,
+                        stroke: "#ffffff", strokeWidth: 1.4,
+                        transformBox: "fill-box", transformOrigin: "center",
+                        transform: isH ? "scale(1.1)" : "scale(1)",
+                        filter: isH ? "drop-shadow(0 6px 12px rgba(20,20,27,.28))" : "none",
+                        transition: "transform .18s cubic-bezier(.2,.8,.2,1), fill .16s, filter .16s",
+                      }}
+                    />
+                  </svg>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: isH ? "var(--ink)" : "var(--ink-2)" }}>
+                    {nom}
+                  </span>
                 </button>
               );
             })}
