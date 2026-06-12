@@ -89,11 +89,31 @@ export function MapView({ initial, onHome, onPortal, dept }: {
   const mapElRef = useRef<HTMLDivElement>(null);                                // la balise HTML qui contient la carte
   const clusterRef = useRef<L.MarkerClusterGroup | null>(null);                 // le groupe de marqueurs clusterisés
   const didFitRef = useRef(false);                                              // recentrage initial déjà fait ?
+  const deptRef = useRef<string | undefined>(dept?.code);                       // dept courant (pour les handlers carte)
+  const loadTimerRef = useRef<number | null>(null);                            // debounce du chargement par zone
 
-  /* ---- points carte (scopés au département du territoire) ---- */
+  /* ---- points carte : CHARGEMENT PAR ZONE VISIBLE ----
+     Au changement de territoire : on mémorise le dept, on autorise un recadrage, et on
+     charge un petit échantillon pour pouvoir cadrer. Ensuite, c'est le `moveend` de la
+     carte (voir init Leaflet) qui recharge les points de la portion regardée (bbox),
+     plafonnés -> jamais 100 000 points d'un coup, même sur Paris. */
   useEffect(() => {
-    api.geojson({ located: true, department: dept?.code }).then(setPoints).catch(() => setPoints([]));
+    deptRef.current = dept?.code;
+    didFitRef.current = false;
+    api.geojson({ located: true, department: dept?.code, limit: 3000 })
+      .then(setPoints).catch(() => setPoints([]));
   }, [dept?.code]);
+
+  // Charge les points de la zone actuellement affichée (bbox de la carte), plafonnés.
+  const loadViewport = useCallback(() => {
+    const m = mapRef.current;
+    if (!m) return;
+    const b = m.getBounds();
+    api.geojson({
+      located: true, department: deptRef.current,
+      bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], limit: 4000,
+    }).then(setPoints).catch(() => {});
+  }, []);
 
 
   // Déplace en douceur la carte vers une association (animation de "vol").
@@ -224,6 +244,11 @@ export function MapView({ initial, onHome, onPortal, dept }: {
       maxZoom: 19,
     }).addTo(map);
     mapRef.current = map;
+    // Recharge les points de la zone à chaque fin de déplacement/zoom (debounce léger).
+    map.on("moveend", () => {
+      if (loadTimerRef.current) window.clearTimeout(loadTimerRef.current);
+      loadTimerRef.current = window.setTimeout(loadViewport, 250);
+    });
     setTimeout(() => map.invalidateSize(), 200);
     return () => { map.remove(); mapRef.current = null; };
   }, []);

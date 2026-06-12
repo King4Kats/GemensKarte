@@ -199,7 +199,7 @@ export class AssociationsService {
         -- (ils apparaissaient au large de l'Afrique, golfe de Guinée). Aucune asso
         -- française n'a une latitude proche de 0, donc ce filtre ne retire qu'eux.
         AND NOT (ST_X(location) BETWEEN -1 AND 1 AND ST_Y(location) BETWEEN -1 AND 1)
-      LIMIT 50000
+      LIMIT ${Math.min(q.limit && q.limit >= 100 ? q.limit : 4000, 8000)}
     `);
 
     return {
