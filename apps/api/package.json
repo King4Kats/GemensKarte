@@ -10,7 +10,8 @@
     "db:migrate": "ts-node -T src/db/migrate.ts",
     "db:seed": "ts-node -T src/db/seed.ts",
     "search:reindex": "ts-node -T src/search/reindex.ts",
-    "import:rna": "ts-node -T src/import/rna/cli.ts"
+    "import:rna": "ts-node -T src/import/rna/cli.ts",
+    "regeocode:missing": "ts-node -T src/import/rna/regeocode-missing.ts"
   },
   "dependencies": {
     "@gemenskarte/shared": "workspace:*",
