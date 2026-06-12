@@ -17,7 +17,8 @@ import { STRIPE_DON_URL } from "../lib/config";
 import { useIsMobile } from "../lib/useIsMobile";
 import { ConfettiField } from "../components/ConfettiField";
 import { ContactModal } from "../components/ContactModal";
-import { REGION_COLOR, COVERED_CODES, COVERED, STATE_COLOR, STATE_LABEL, type DeptMeta } from "../data/departements";
+import { TerritoryModal } from "../components/TerritoryModal";
+import { REGION_COLOR, COVERED_CODES, type DeptMeta } from "../data/departements";
 
 // Options passées quand on quitte l'accueil pour aller explorer la carte
 // (recherche tapée, catégorie choisie, fiche à ouvrir).
@@ -731,60 +732,22 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             Données mises à jour en continu · Source : RNA © Ministère de l'Intérieur · {dataStats?.total?.toLocaleString("fr-FR") ?? "…"} associations indexées
           </p>
 
-          {/* Bouton -> détail par TERRITOIRE (stats par département, groupées par région). */}
+          {/* Bouton -> popup détail par TERRITOIRE (recherche + tri, tient 100+ départements). */}
           <div style={{ marginTop: 28, textAlign: "center" }}>
             <button className="btn btn-ghost btn-md"
               onClick={() => {
-                setShowTerr((v) => !v);
+                setShowTerr(true);
                 if (!territories) api.fetchTerritories().then(setTerritories).catch(() => {});
               }}>
-              {showTerr ? "Masquer le détail par territoire ▴" : "Voir le détail par territoire ▾"}
+              Voir le détail par territoire
             </button>
           </div>
-
           {showTerr && (
-            <div style={{ marginTop: 28 }}>
-              {!territories ? (
-                <div style={{ textAlign: "center", color: "var(--muted)", fontWeight: 600 }}>Chargement…</div>
-              ) : (
-                Object.entries(
-                  COVERED_CODES.reduce<Record<string, string[]>>((acc, code) => {
-                    const reg = COVERED[code].region;
-                    (acc[reg] ??= []).push(code);
-                    return acc;
-                  }, {}),
-                ).map(([region, codes]) => (
-                  <div key={region} style={{ marginBottom: 28 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
-                      <span style={{ width: 12, height: 12, borderRadius: 4, background: REGION_COLOR[region] ?? "var(--accent)" }} />
-                      <h4 style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", margin: 0 }}>{region}</h4>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 12 }}>
-                      {codes.map((code) => {
-                        const meta = COVERED[code];
-                        const t = territories.find((x) => x.department === code);
-                        const tot = t?.total ?? 0;
-                        const p = (n: number) => (tot ? Math.round((n / tot) * 1000) / 10 : 0);
-                        return (
-                          <div key={code} style={{ background: "var(--bg)", borderRadius: "var(--radius)", border: "1px solid var(--hairline)", boxShadow: "var(--shadow-card)", padding: "14px 16px" }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                              <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>{meta.nom}</span>
-                              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.03em", textTransform: "uppercase", color: STATE_COLOR[meta.state], padding: "2px 7px", borderRadius: 20, background: `color-mix(in srgb, ${STATE_COLOR[meta.state]} 14%, white)`, whiteSpace: "nowrap" }}>{STATE_LABEL[meta.state]}</span>
-                            </div>
-                            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: "var(--ink)", lineHeight: 1 }}>{tot.toLocaleString("fr-FR")}</div>
-                            <div style={{ fontSize: 12, color: "var(--muted)", fontWeight: 600, marginBottom: 10 }}>associations</div>
-                            <div style={{ fontSize: 12, color: "var(--ink-2)", fontWeight: 600, lineHeight: 1.6 }}>
-                              {p(t?.geolocalisees ?? 0)}% géolocalisées · {p(t?.avecSocial ?? 0)}% avec un lien
-                              <br />FB {p(t?.avecFacebook ?? 0)}% · IG {p(t?.avecInstagram ?? 0)}% · web {p(t?.avecWebsite ?? 0)}%
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+            <TerritoryModal
+              territories={territories}
+              onClose={() => setShowTerr(false)}
+              onSelect={onSelect}
+            />
           )}
         </div>
       </section>
