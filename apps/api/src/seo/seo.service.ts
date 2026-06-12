@@ -224,18 +224,38 @@ ${sections}`;
     return this.doc({ title, desc, canonical: `${BASE}/territoires`, body });
   }
 
-  /** Sitemap XML : accueil + index racine + chaque index département + chaque commune. */
-  async sitemap(): Promise<string> {
+  // Découpage du sitemap : Google limite à 50 000 URL/fichier. ~49k communes -> on
+  // passe par un sitemap INDEX qui pointe vers des sous-sitemaps de 20 000 URL.
+  private readonly SITEMAP_CHUNK = 20000;
+
+  /** Toutes les URL du sitemap (accueil + racine + départements + communes). */
+  private async sitemapUrls(): Promise<{ urls: string[]; mod: string }> {
     const communes = await this.allCommunes();
-    const globalMod = communes.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
+    const mod = communes.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
     const urls = [
-      `<url><loc>${BASE}/</loc><lastmod>${globalMod}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
-      `<url><loc>${BASE}/territoires</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
+      `<url><loc>${BASE}/</loc><lastmod>${mod}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
+      `<url><loc>${BASE}/territoires</loc><lastmod>${mod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
       ...Object.values(SEO_DEPARTEMENTS).map((d) =>
-        `<url><loc>${BASE}/${d.slug}</loc><lastmod>${globalMod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`),
+        `<url><loc>${BASE}/${d.slug}</loc><lastmod>${mod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`),
       ...communes.map((c) =>
         `<url><loc>${BASE}/${c.deptSlug}/${c.slug}</loc><lastmod>${c.updated}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`),
     ];
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.join("\n")}\n</urlset>\n`;
+    return { urls, mod };
+  }
+
+  /** /sitemap.xml = sitemap INDEX : liste les sous-sitemaps /sitemap-N.xml. */
+  async sitemap(): Promise<string> {
+    const { urls, mod } = await this.sitemapUrls();
+    const n = Math.max(1, Math.ceil(urls.length / this.SITEMAP_CHUNK));
+    const items = Array.from({ length: n }, (_, i) =>
+      `<sitemap><loc>${BASE}/sitemap-${i}.xml</loc><lastmod>${mod}</lastmod></sitemap>`);
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${items.join("\n")}\n</sitemapindex>\n`;
+  }
+
+  /** /sitemap-N.xml = une tranche de 20 000 URL. */
+  async sitemapChunk(n: number): Promise<string> {
+    const { urls } = await this.sitemapUrls();
+    const slice = urls.slice(n * this.SITEMAP_CHUNK, (n + 1) * this.SITEMAP_CHUNK);
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${slice.join("\n")}\n</urlset>\n`;
   }
 }

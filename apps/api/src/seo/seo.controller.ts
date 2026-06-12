@@ -22,6 +22,14 @@ export class SeoController {
     return this.svc.sitemap();
   }
 
+  // Sous-sitemap (tranche). nginx réécrit /sitemap-3.xml -> /api/seo/sitemap-part/3.
+  // Déclaré AVANT :dept pour ne pas être avalé par la route département.
+  @Get("sitemap-part/:n")
+  @Header("Content-Type", "application/xml; charset=utf-8")
+  sitemapPart(@Param("n") n: string): Promise<string> {
+    return this.svc.sitemapChunk(Number(n) || 0);
+  }
+
   // Index racine de tous les territoires (défini AVANT :dept pour ne pas être avalé).
   @Get("territoires")
   @Header("Content-Type", "text/html; charset=utf-8")
