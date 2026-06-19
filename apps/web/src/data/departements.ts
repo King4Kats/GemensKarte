@@ -94,7 +94,7 @@ const DEPARTMENTS: Array<[string, string, string]> = [
 export const COVERED: Record<string, DeptMeta> = Object.fromEntries(
   DEPARTMENTS.map(([code, nom, region]) => [
     code,
-    { code, nom, slug: slugify(nom), region, state: code === "85" ? "en_cours" : "non_scrape" } as DeptMeta,
+    { code, nom, slug: slugify(nom), region, state: code === "46" ? "en_cours" : code === "85" ? "fait" : "non_scrape" } as DeptMeta,
   ]),
 );
 

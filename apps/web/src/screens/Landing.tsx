@@ -369,7 +369,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         <div style={{ flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 16 }}>
           {([
             { icon: "pin", color: "#2b59ff", label: `${total?.toLocaleString("fr-FR") ?? "…"} associations référencées` },
-            { icon: "map", color: "#ff2d78", label: "Vendée — d'autres territoires à venir" },
+            { icon: "map", color: "#ff2d78", label: "Vendée enrichie · Lot en cours" },
             { icon: "search", color: "#7b3ff2", label: "Recherche par type, ville, distance" },
             { icon: "users", color: "#00d68f", label: "Entièrement bénévole & à code ouvert" },
           ] as const).map((it) => (

@@ -148,9 +148,9 @@ export class StatsService {
 
 // Territoire en cours d'enrichissement + prochain prévu (affichés sur l'accueil).
 // À changer ici quand on bascule de territoire.
-const TERRITOIRE_EN_COURS = "Vendée";
-const TERRITOIRE_DEPT = "85";        // département du territoire en cours (scope du suivi)
-const PROCHAIN_TERRITOIRE = "Lot";
+const TERRITOIRE_EN_COURS = "Lot";
+const TERRITOIRE_DEPT = "46";        // département du territoire en cours (scope du suivi)
+const PROCHAIN_TERRITOIRE = "Aveyron";
 
 // Plateformes suivies par les passes ciblées (mêmes marqueurs/conditions que
 // discover_targeted.py et progress.py). `social: true` = passe réseau social.
