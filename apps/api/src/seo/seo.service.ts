@@ -33,6 +33,22 @@ const CAT_GENRE: Record<string, string> = {
 // Ordre d'affichage stable des catégories (celui de CATEGORIES).
 const CAT_ORDER: string[] = CATEGORIES.map((c) => c.id);
 
+// Slugs d'URL des pages catégorie×département : /<dept>/associations-sportives, etc.
+// Volontairement explicites (riches en mots-clés + AUCUNE collision possible avec un
+// slug de commune) -> le routeur teste d'abord ces slugs, sinon c'est une commune.
+const CAT_SLUG: Record<string, string> = {
+  sport: "associations-sportives",
+  cult: "associations-culturelles",
+  eco: "associations-environnement",
+  social: "associations-vie-locale",
+  soli: "associations-solidarite",
+  edu: "associations-education",
+  patri: "associations-patrimoine",
+};
+const CAT_BY_SLUG: Record<string, string> = Object.fromEntries(
+  Object.entries(CAT_SLUG).map(([id, slug]) => [slug, id]),
+);
+
 function esc(s: string | null | undefined): string {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
@@ -263,6 +279,108 @@ ${voisines ? `<p class="lead" style="margin-top:32px">Associations dans d'autres
     return this.doc({ title, desc, canonical: `${BASE}/${c.deptSlug}/${c.slug}`, jsonld, body });
   }
 
+  /** Slug d'URL d'une catégorie (pour le routeur/contrôleur). */
+  isCategorySlug(slug: string): boolean {
+    return slug in CAT_BY_SLUG;
+  }
+
+  /** Page CATÉGORIE × DÉPARTEMENT : /<deptSlug>/associations-sportives, etc.
+   *  Riche (toutes les communes du dépt ayant ce thème + un échantillon d'assos),
+   *  pour capter « associations sportives <département> ». null si inconnu/vide. */
+  async deptCategoryPage(deptSlug: string, catSlug: string): Promise<string | null> {
+    const deptCode = SEO_CODE_BY_SLUG[deptSlug];
+    const catId = CAT_BY_SLUG[catSlug];
+    if (!deptCode || !catId) return null;
+    const { nom: deptNom, region } = SEO_DEPARTEMENTS[deptCode];
+    const genre = CAT_GENRE[catId] ?? (CAT_LABEL[catId] ?? "").toLowerCase();
+
+    // Communes du département ayant au moins une asso de ce thème (avec compte).
+    const grp = await this.db.execute<{ city: string; n: number }>(sql`
+      SELECT city, count(*)::int AS n
+      FROM associations
+      WHERE department = ${deptCode} AND category_id = ${catId} AND status = 'published'
+        AND city IS NOT NULL AND length(trim(city)) > 0
+      GROUP BY city ORDER BY count(*) DESC, city ASC
+    `);
+    if (!grp.rows.length) return null; // pas de page si aucune asso de ce thème (pas de page maigre)
+    const total = grp.rows.reduce((s, r) => s + r.n, 0);
+    const nbCommunes = grp.rows.length;
+
+    // Slug officiel de chaque commune (réutilise le dédoublonnage d'allCommunes).
+    const slugByCity = new Map<string, string>();
+    for (const c of (await this.allCommunes()).filter((x) => x.dept === deptCode)) slugByCity.set(c.city, c.slug);
+
+    // Échantillon d'associations du thème (nom + ville), pour du contenu réel + ItemList.
+    const assoRows = await this.db.execute<{ name: string; city: string }>(sql`
+      SELECT name, city FROM associations
+      WHERE department = ${deptCode} AND category_id = ${catId} AND status = 'published'
+      ORDER BY name ASC LIMIT ${MAX_LISTE}
+    `);
+    const lis = assoRows.rows.map((a) =>
+      `  <li><span class="nom">${esc(a.name)}</span> <span class="cat">· ${esc(cleanCity(a.city))}</span></li>`,
+    ).join("\n");
+    const reste = total > assoRows.rows.length
+      ? `<p class="lead">… et ${total - assoRows.rows.length} autres associations ${esc(genre)} dans le département, à explorer sur la <a href="/">carte interactive</a>.</p>` : "";
+
+    // Maillage : communes du thème (vers la page commune) + autres thèmes du département.
+    const communeLinks = grp.rows.map((r) => {
+      const sl = slugByCity.get(r.city);
+      const lbl = `${esc(cleanCity(r.city))} <span class="c">${r.n}</span>`;
+      return sl ? `<a href="/${deptSlug}/${sl}">${lbl}</a>` : `<span>${lbl}</span>`;
+    }).join("\n");
+    const autresThemes = CAT_ORDER.filter((id) => id !== catId).map((id) =>
+      `<a href="/${deptSlug}/${CAT_SLUG[id]}">Associations ${esc(CAT_GENRE[id] ?? CAT_LABEL[id])} — ${esc(deptNom)}</a>`,
+    ).join("");
+
+    const faq: [string, string][] = [
+      [
+        `Combien d'associations ${genre} y a-t-il dans le département ${deptNom} ?`,
+        `Le département ${deptNom} (${region}) compte ${total} association${total > 1 ? "s" : ""} ${genre} réparties dans ${nbCommunes} commune${nbCommunes > 1 ? "s" : ""}, référencées sur GemensKarte.`,
+      ],
+      [
+        `Comment trouver une association ${genre} près de chez moi (${deptNom}) ?`,
+        `Choisissez votre commune dans la liste ci-dessous, ou utilisez la carte interactive de GemensKarte pour localiser les associations ${genre} du département ${deptNom} et accéder à leurs coordonnées.`,
+      ],
+    ];
+    const faqHtml = `<h2>Questions fréquentes</h2>\n` +
+      faq.map(([q, a]) => `<h3>${esc(q)}</h3>\n<p class="lead">${esc(a)}</p>`).join("\n");
+
+    const title = `Associations ${genre} — ${deptNom} | GemensKarte`;
+    const desc = `Les ${total} associations ${genre} du département ${deptNom} (${region}), dans ${nbCommunes} communes. Trouvez une association ${genre} près de chez vous sur GemensKarte.`;
+    const jsonld = JSON.stringify([
+      {
+        "@context": "https://schema.org", "@type": "ItemList",
+        name: `Associations ${genre} — ${deptNom}`, numberOfItems: total,
+        itemListElement: assoRows.rows.slice(0, 100).map((a, i) => ({ "@type": "ListItem", position: i + 1, name: a.name })),
+      },
+      this.breadcrumb([
+        ["Accueil", `${BASE}/`],
+        [deptNom, `${BASE}/${deptSlug}`],
+        [`Associations ${genre}`, `${BASE}/${deptSlug}/${catSlug}`],
+      ]),
+      {
+        "@context": "https://schema.org", "@type": "FAQPage",
+        mainEntity: faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
+      },
+    ]);
+    const body = `
+<h1>Associations ${esc(genre)} — ${esc(deptNom)}</h1>
+<p class="lead">${total} <strong>association${total > 1 ? "s" : ""} ${esc(genre)}</strong> référencée${total > 1 ? "s" : ""} dans le département ${esc(deptNom)} (${esc(region)}), réparties dans ${nbCommunes} commune${nbCommunes > 1 ? "s" : ""}. Choisissez une commune ou explorez la <a href="/">carte interactive</a>. Voir aussi <a href="/${deptSlug}">toutes les communes — ${esc(deptNom)}</a>.</p>
+<h2>Associations ${esc(genre)} par commune — ${esc(deptNom)}</h2>
+<div class="grid">
+${communeLinks}
+</div>
+<h2>Quelques associations ${esc(genre)} du ${esc(deptNom)}</h2>
+<ul class="assos">
+${lis}
+</ul>
+${reste}
+${faqHtml}
+<p class="lead" style="margin-top:32px">Autres thèmes — ${esc(deptNom)} :</p>
+<div class="deps">${autresThemes}</div>`;
+    return this.doc({ title, desc, canonical: `${BASE}/${deptSlug}/${catSlug}`, jsonld, body });
+  }
+
   /** Index d'un département : /<deptSlug> (liste de ses communes). null si inconnu. */
   async deptIndex(deptSlug: string): Promise<string | null> {
     const deptCode = SEO_CODE_BY_SLUG[deptSlug];
@@ -279,10 +397,15 @@ ${voisines ? `<p class="lead" style="margin-top:32px">Associations dans d'autres
       ["Accueil", `${BASE}/`],
       [nom, `${BASE}/${deptSlug}`],
     ]));
+    const themeLinks = CAT_ORDER.map((id) =>
+      `<a href="/${deptSlug}/${CAT_SLUG[id]}">Associations ${esc(CAT_GENRE[id] ?? CAT_LABEL[id])} — ${esc(nom)}</a>`,
+    ).join("");
     const body = `
 <h1>${esc(nom)} — associations par commune</h1>
-<p class="lead">${communes.length} communes · ${total} associations référencées. Choisissez une commune, ou explorez la <a href="/">carte interactive</a>.</p>
-<div class="grid">
+<p class="lead">${communes.length} communes · ${total} associations référencées. Choisissez une commune, parcourez par thème, ou explorez la <a href="/">carte interactive</a>.</p>
+<p class="lead" style="margin-top:0">Par thème :</p>
+<div class="deps">${themeLinks}</div>
+<div class="grid" style="margin-top:24px">
 ${liens}
 </div>
 <p class="lead" style="margin-top:32px">Autres territoires couverts :</p>
@@ -324,15 +447,25 @@ ${sections}`;
   // passe par un sitemap INDEX qui pointe vers des sous-sitemaps de 20 000 URL.
   private readonly SITEMAP_CHUNK = 20000;
 
-  /** Toutes les URL du sitemap (accueil + racine + départements + communes). */
+  /** Toutes les URL du sitemap (accueil + racine + départements + thèmes + communes). */
   private async sitemapUrls(): Promise<{ urls: string[]; mod: string }> {
     const communes = await this.allCommunes();
     const mod = communes.reduce((m, c) => (c.updated > m ? c.updated : m), "2024-01-01");
+    // Pages catégorie×département (uniquement les combos qui ont des assos).
+    const inList = SEO_DEPT_CODES.map((c) => `'${c}'`).join(",");
+    const cat = await this.db.execute<{ department: string; category_id: string }>(sql.raw(`
+      SELECT department, category_id FROM associations
+      WHERE department IN (${inList}) AND status = 'published'
+      GROUP BY department, category_id`));
+    const catUrls = cat.rows
+      .filter((r) => SEO_DEPARTEMENTS[r.department] && CAT_SLUG[r.category_id])
+      .map((r) => `<url><loc>${BASE}/${SEO_DEPARTEMENTS[r.department].slug}/${CAT_SLUG[r.category_id]}</loc><lastmod>${mod}</lastmod><changefreq>weekly</changefreq><priority>0.65</priority></url>`);
     const urls = [
       `<url><loc>${BASE}/</loc><lastmod>${mod}</lastmod><changefreq>daily</changefreq><priority>1.0</priority></url>`,
       `<url><loc>${BASE}/territoires</loc><lastmod>${mod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`,
       ...Object.values(SEO_DEPARTEMENTS).map((d) =>
         `<url><loc>${BASE}/${d.slug}</loc><lastmod>${mod}</lastmod><changefreq>weekly</changefreq><priority>0.7</priority></url>`),
+      ...catUrls,
       ...communes.map((c) =>
         `<url><loc>${BASE}/${c.deptSlug}/${c.slug}</loc><lastmod>${c.updated}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>`),
     ];

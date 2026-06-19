@@ -45,9 +45,16 @@ export class SeoController {
     return html;
   }
 
+  // /<dept>/<slug> : si <slug> est un thème (associations-sportives…) -> page
+  // catégorie×département ; sinon c'est une commune.
   @Get(":dept/:slug")
   @Header("Content-Type", "text/html; charset=utf-8")
   async commune(@Param("dept") dept: string, @Param("slug") slug: string): Promise<string> {
+    if (this.svc.isCategorySlug(slug)) {
+      const cat = await this.svc.deptCategoryPage(dept, slug);
+      if (!cat) throw new NotFoundException("Thème non couvert pour ce département");
+      return cat;
+    }
     const html = await this.svc.communePage(dept, slug);
     if (!html) throw new NotFoundException("Commune introuvable");
     return html;
