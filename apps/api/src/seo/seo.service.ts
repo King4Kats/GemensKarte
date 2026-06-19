@@ -52,8 +52,8 @@ const CAT_BY_SLUG: Record<string, string> = Object.fromEntries(
 function esc(s: string | null | undefined): string {
   return (s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
-function cleanCity(s: string): string {
-  return s.replace(/\s+/g, " ").trim();
+function cleanCity(s: string | null | undefined): string {
+  return (s ?? "").replace(/\s+/g, " ").trim();
 }
 function slugify(s: string): string {
   return cleanCity(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -314,6 +314,7 @@ ${voisines ? `<p class="lead" style="margin-top:32px">Associations dans d'autres
     const assoRows = await this.db.execute<{ name: string; city: string }>(sql`
       SELECT name, city FROM associations
       WHERE department = ${deptCode} AND category_id = ${catId} AND status = 'published'
+        AND city IS NOT NULL AND length(trim(city)) > 0
       ORDER BY name ASC LIMIT ${MAX_LISTE}
     `);
     const lis = assoRows.rows.map((a) =>
