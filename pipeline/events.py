@@ -104,11 +104,11 @@ def norm_event(e: dict) -> dict:
     }
 
 
-def fetch_all_events(client, hard_cap=3000) -> list[dict]:
-    """Récupère TOUS les événements à venir du département en paginant (~3 appels)."""
+def fetch_all_events(client, center=VENDEE, radius_km=DEPT_RADIUS_KM, hard_cap=3000) -> list[dict]:
+    """Récupère TOUS les événements à venir AUTOUR DE `center` (lat,lon) en paginant."""
     out, offset = [], 0
-    where = (f"within_distance(location_coordinates, geom'POINT({VENDEE[1]} {VENDEE[0]})', "
-             f"{DEPT_RADIUS_KM}km) AND firstdate_begin >= now()" + ODS_EXCLUDE)
+    where = (f"within_distance(location_coordinates, geom'POINT({center[1]} {center[0]})', "
+             f"{radius_km}km) AND firstdate_begin >= now()" + ODS_EXCLUDE)
     while offset < hard_cap:
         params = {"where": where, "order_by": "firstdate_begin", "limit": 100, "offset": offset}
         for attempt in range(4):
@@ -153,8 +153,22 @@ def match_events(asso_name, city, nearby, cap) -> list[dict]:
     return out[:cap]
 
 
-def fetch_assos(conn, limit, max_age, redo):
+def dept_centroid(conn, dept):
+    """Centre géographique des assos d'un département (pour cadrer la requête events)."""
+    r = conn.execute(
+        "SELECT AVG(ST_Y(location::geometry)), AVG(ST_X(location::geometry)) "
+        "FROM associations WHERE department = %s AND location IS NOT NULL",
+        (dept,),
+    ).fetchone()
+    return (float(r[0]), float(r[1])) if r and r[0] is not None else None
+
+
+def fetch_assos(conn, limit, max_age, redo, dept=None):
     cond = "location IS NOT NULL"
+    params = {"maxage": max_age}
+    if dept:
+        cond += " AND department = %(dept)s"
+        params["dept"] = dept
     if not redo:
         cond += (" AND (NOT (meta ? 'eventsScrapedAt') OR (meta->>'eventsScrapedAt')::timestamptz "
                  " < now() - make_interval(days => %(maxage)s))")
@@ -162,7 +176,7 @@ def fetch_assos(conn, limit, max_age, redo):
     rows = conn.execute(
         f"""SELECT id, name, city, ST_Y(location::geometry), ST_X(location::geometry)
             FROM associations WHERE {cond} ORDER BY id {lim}""",
-        {"maxage": max_age},
+        params,
     ).fetchall()
     return [(str(r[0]), r[1], r[2], float(r[3]), float(r[4])) for r in rows]
 
@@ -175,18 +189,28 @@ def main() -> int:
     ap.add_argument("--cap", type=int, default=6)
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--redo", action="store_true")
+    ap.add_argument("--dept", default=None, help="code département à traiter (centre la recherche d'events dessus)")
     args = ap.parse_args()
 
     with psycopg.connect(DSN, autocommit=False) as conn:
-        assos = fetch_assos(conn, args.limit, args.max_age, args.redo)
+        assos = fetch_assos(conn, args.limit, args.max_age, args.redo, args.dept)
         print(f"SCRAP 8 — events : {len(assos)} assos à (ré)assigner "
-              f"(radius={args.radius}km, dry-run={args.dry_run}).", flush=True)
+              f"(dept={args.dept or 'tous'}, radius={args.radius}km, dry-run={args.dry_run}).", flush=True)
         if not assos:
             print("rien à faire.", flush=True); return 0
 
+        # On centre la requête OpenAgenda sur le département traité (sinon, hors Vendée,
+        # aucun événement n'est dans le rayon -> 0 partout). Repli sur la Vendée si pas de dept.
+        center = (dept_centroid(conn, args.dept) or VENDEE) if args.dept else VENDEE
         with httpx.Client(headers={"User-Agent": "GemensKarte/1.0"}) as client:
-            events = fetch_all_events(client)
+            events = fetch_all_events(client, center=center)
         print(f"  {len(events)} événements à venir récupérés (≈{(len(events)//100)+1} appels API).", flush=True)
+        # ROBUSTESSE : 0 événement pour TOUT un département = quasi toujours une panne/limite
+        # API (un département a forcément des events à venir). On NE marque RIEN dans ce cas,
+        # sinon les assos sont gelées 3 jours avec un agenda vide. -> re-tentative au prochain passage.
+        if not events:
+            print("  0 événement récupéré (API indisponible ?) — aucun marquage, re-tentative plus tard.", flush=True)
+            return 0
 
         ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
         n_with = n_matched = 0
