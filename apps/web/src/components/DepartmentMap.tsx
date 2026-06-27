@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { FR_VIEWBOX, FR_DEPT_PATHS } from "../data/fr-departements-paths";
 import { FR_DROM_VIEWBOX, FR_DROM_PATHS } from "../data/fr-drom-paths";
 import {
-  COVERED, STATE_COLOR, STATE_LABEL, STATE_ORDER, isCovered, colorOf, type DeptMeta,
+  COVERED, STATE_COLOR, STATE_LABEL, STATE_ORDER, isCovered, type DeptMeta, type ScrapState,
 } from "../data/departements";
 
 /**
@@ -10,8 +10,19 @@ import {
  * scrap (rose = en cours, bleu = non scrapé, vert = effectué) et est cliquable.
  * Le reste de la France est laissé en blanc. Sert de sélecteur de territoire.
  */
-export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void }) {
+export function DepartmentMap(
+  { onSelect, activeCode, doneCodes }:
+  { onSelect: (dept: DeptMeta) => void; activeCode?: string; doneCodes?: string[] },
+) {
   const [hover, setHover] = useState<string | null>(null); // code du département survolé
+  // État EFFECTIF d'un département : pris en direct de l'API (en cours / terminés) si
+  // disponible, sinon l'état statique. -> la carte suit le pipeline sans édition manuelle.
+  const doneSet = useMemo(() => new Set(doneCodes ?? []), [doneCodes]);
+  const stateOf = (code: string): ScrapState =>
+    activeCode && code === activeCode ? "en_cours"
+    : doneSet.has(code) ? "fait"
+    : COVERED[code]?.state ?? "non_scrape";
+  const colorFor = (code: string): string => STATE_COLOR[stateOf(code)];
   const codes = useMemo(() => Object.keys(FR_DEPT_PATHS), []); // tous les codes dessinés
   // DROM : tracés dans un repère propre (loin de l'hexagone) -> rendus en petites
   // silhouettes cliquables sous la carte. On ne garde que ceux qui sont couverts.
@@ -31,9 +42,9 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
       <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 }}>
         {hovered ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 800, color: "var(--ink)" }}>
-            <span style={{ width: 11, height: 11, borderRadius: 3, background: STATE_COLOR[hovered.state] }} />
+            <span style={{ width: 11, height: 11, borderRadius: 3, background: colorFor(hover!) }} />
             {hovered.nom}
-            <span style={{ fontWeight: 600, color: "var(--muted)" }}>· {STATE_LABEL[hovered.state]}</span>
+            <span style={{ fontWeight: 600, color: "var(--muted)" }}>· {STATE_LABEL[stateOf(hover!)]}</span>
             <span style={{ color: "var(--accent)", fontWeight: 800 }}>Entrer →</span>
           </span>
         ) : (
@@ -50,7 +61,7 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
           const live = isCovered(code);
           const meta = COVERED[code];
           const isH = hover === code;
-          const color = live ? colorOf(code)! : null;
+          const color = live ? colorFor(code) : null;
           return (
             <path
               key={code}
@@ -84,7 +95,7 @@ export function DepartmentMap({ onSelect }: { onSelect: (dept: DeptMeta) => void
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 18 }}>
             {droms.map(({ code, nom, d }) => {
               const m = COVERED[code];
-              const col = colorOf(code)!;
+              const col = colorFor(code);
               const isH = hover === code;
               return (
                 <button

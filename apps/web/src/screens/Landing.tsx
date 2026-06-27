@@ -309,7 +309,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
 
           {/* Sélecteur de territoire (carte SVG) */}
           <div id="carte" style={{ width: "100%", maxWidth: 600, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .6s cubic-bezier(.22,1,.36,1) .38s forwards" }}>
-            <DepartmentMap onSelect={onSelect} />
+            <DepartmentMap onSelect={onSelect} activeCode={progress?.territoryCode} doneCodes={progress?.done} />
           </div>
         </div>
 
@@ -369,7 +369,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         <div style={{ flex: "1 1 260px", display: "flex", flexDirection: "column", gap: 16 }}>
           {([
             { icon: "pin", color: "#2b59ff", label: `${total?.toLocaleString("fr-FR") ?? "…"} associations référencées` },
-            { icon: "map", color: "#ff2d78", label: "Vendée enrichie · Lot en cours" },
+            { icon: "map", color: "#ff2d78", label: progress?.territory ? `Enrichissement en cours · ${progress.territory}` : "Enrichissement en cours" },
             { icon: "search", color: "#7b3ff2", label: "Recherche par type, ville, distance" },
             { icon: "users", color: "#00d68f", label: "Entièrement bénévole & à code ouvert" },
           ] as const).map((it) => (

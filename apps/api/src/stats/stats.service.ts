@@ -72,16 +72,17 @@ export class StatsService {
 
   // Premier département de DEPT_ORDER qui a encore du travail (= territoire « en cours »
   // réel). Renvoie son code, son nom et le nom du suivant. Si tout est fini -> dernier.
-  private async activeDept(): Promise<{ code: string; nom: string; next: string }> {
+  private async activeDept(): Promise<{ code: string; nom: string; next: string; done: string[] }> {
     for (let i = 0; i < DEPT_ORDER.length; i++) {
       const [code, nom] = DEPT_ORDER[i];
       const r = await this.db.execute<{ has_work: boolean }>(sql.raw(HAS_WORK_SQL(code)));
       if (r.rows[0]?.has_work) {
-        return { code, nom, next: DEPT_ORDER[i + 1]?.[1] ?? "—" };
+        // Les départements AVANT l'actif (dans l'ordre) sont terminés.
+        return { code, nom, next: DEPT_ORDER[i + 1]?.[1] ?? "—", done: DEPT_ORDER.slice(0, i).map((d) => d[0]) };
       }
     }
     const last = DEPT_ORDER[DEPT_ORDER.length - 1];
-    return { code: last[0], nom: last[1], next: "—" };
+    return { code: last[0], nom: last[1], next: "—", done: DEPT_ORDER.slice(0, -1).map((d) => d[0]) };
   }
 
   // Avancement des passes ciblées par plateforme (même calcul que progress.py) :
@@ -111,6 +112,8 @@ export class StatsService {
     const d = rows.rows[0]!;
     return {
       territory: active.nom,
+      territoryCode: active.code,
+      done: active.done,        // codes des départements déjà terminés (carte: vert)
       next: active.next,
       total: d.total,
       platforms: PLATEFORMES.map((p) => {
