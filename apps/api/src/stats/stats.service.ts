@@ -70,9 +70,24 @@ export class StatsService {
     `);
   }
 
+  // Premier département de DEPT_ORDER qui a encore du travail (= territoire « en cours »
+  // réel). Renvoie son code, son nom et le nom du suivant. Si tout est fini -> dernier.
+  private async activeDept(): Promise<{ code: string; nom: string; next: string }> {
+    for (let i = 0; i < DEPT_ORDER.length; i++) {
+      const [code, nom] = DEPT_ORDER[i];
+      const r = await this.db.execute<{ has_work: boolean }>(sql.raw(HAS_WORK_SQL(code)));
+      if (r.rows[0]?.has_work) {
+        return { code, nom, next: DEPT_ORDER[i + 1]?.[1] ?? "—" };
+      }
+    }
+    const last = DEPT_ORDER[DEPT_ORDER.length - 1];
+    return { code: last[0], nom: last[1], next: "—" };
+  }
+
   // Avancement des passes ciblées par plateforme (même calcul que progress.py) :
   // scannées / restantes / validées / %, pour l'afficher en direct sur l'accueil.
   async getProgress() {
+    const active = await this.activeDept();
     const parts: string[] = [];
     for (const p of PLATEFORMES) {
       // "restantes" = exactement les conditions de fetch_pending de discover_targeted.py.
@@ -89,15 +104,14 @@ export class StatsService {
       parts.push(`count(*) FILTER (WHERE social ? '${p.col}')::int AS ${p.key}_val`);
     }
     parts.push("count(*)::int AS total");
-    // Scopé au territoire en cours (ex. Vendée=85) : le suivi reste juste même quand
-    // d'autres territoires seront ajoutés en base. (La transparence, elle, reste nationale.)
+    // Scopé au département ACTIF (calculé dynamiquement) : le suivi suit le pipeline.
     const rows = await this.db.execute<Record<string, number>>(
-      sql.raw(`SELECT ${parts.join(", ")} FROM associations WHERE department = '${TERRITOIRE_DEPT}'`),
+      sql.raw(`SELECT ${parts.join(", ")} FROM associations WHERE department = '${active.code}'`),
     );
     const d = rows.rows[0]!;
     return {
-      territory: TERRITOIRE_EN_COURS,
-      next: PROCHAIN_TERRITOIRE,
+      territory: active.nom,
+      next: active.next,
       total: d.total,
       platforms: PLATEFORMES.map((p) => {
         const scanned = d[`${p.key}_scan`];
@@ -146,11 +160,27 @@ export class StatsService {
   }
 }
 
-// Territoire en cours d'enrichissement + prochain prévu (affichés sur l'accueil).
-// À changer ici quand on bascule de territoire.
-const TERRITOIRE_EN_COURS = "Lot";
-const TERRITOIRE_DEPT = "46";        // département du territoire en cours (scope du suivi)
-const PROCHAIN_TERRITOIRE = "Aveyron";
+// Ordre d'enrichissement (DOIT refléter .targets des VPS). Le territoire « en cours »
+// est calculé DYNAMIQUEMENT (premier dépt de la liste qui a encore du travail, même
+// logique que target_dept.py) -> le site et le mail suivent le pipeline tout seuls,
+// sans rien changer à la main quand on bascule de département.
+const DEPT_ORDER: [string, string][] = [
+  ["85", "Vendée"], ["46", "Lot"], ["12", "Aveyron"], ["09", "Ariège"], ["11", "Aude"],
+  ["30", "Gard"], ["31", "Haute-Garonne"], ["32", "Gers"], ["48", "Lozère"],
+  ["65", "Hautes-Pyrénées"], ["66", "Pyrénées-Orientales"], ["81", "Tarn"], ["82", "Tarn-et-Garonne"],
+];
+// EXISTS « ce département a-t-il encore du travail ? » (identique à target_dept.py).
+const HAS_WORK_SQL = (code: string) => `SELECT EXISTS(
+  SELECT 1 FROM associations WHERE department = '${code}' AND location IS NOT NULL AND (
+    (meta->'discovery') IS NULL
+    OR ((meta->>'fbTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'facebook')
+        AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"facebook"}]'::jsonb))
+    OR ((meta->>'igTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'instagram')
+        AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"instagram"}]'::jsonb))
+    OR ((meta->>'webTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'website'))
+    OR ((meta->>'helloassoCheckedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'helloasso')
+        AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"helloasso"}]'::jsonb))
+  ) LIMIT 1) AS has_work`;
 
 // Plateformes suivies par les passes ciblées (mêmes marqueurs/conditions que
 // discover_targeted.py et progress.py). `social: true` = passe réseau social.
