@@ -104,6 +104,8 @@ export class StatsService {
       parts.push(`count(*) FILTER (WHERE ${rest.join(" AND ")})::int AS ${p.key}_rest`);
       parts.push(`count(*) FILTER (WHERE social ? '${p.col}')::int AS ${p.key}_val`);
     }
+    parts.push(`count(*) FILTER (WHERE (meta->'discovery') IS NOT NULL)::int AS ai_total`);
+    parts.push(`count(*) FILTER (WHERE meta ? 'verifiedAt')::int AS ai_verified`);
     parts.push("count(*)::int AS total");
     // Scopé au département ACTIF (calculé dynamiquement) : le suivi suit le pipeline.
     const rows = await this.db.execute<Record<string, number>>(
@@ -116,6 +118,11 @@ export class StatsService {
       done: active.done,        // codes des départements déjà terminés (carte: vert)
       next: active.next,
       total: d.total,
+      aiVerification: {
+        total: d.ai_total,
+        verified: d.ai_verified,
+        pct: d.ai_total ? Math.round((d.ai_verified / d.ai_total) * 1000) / 10 : 100,
+      },
       platforms: PLATEFORMES.map((p) => {
         const scanned = d[`${p.key}_scan`];
         const remaining = d[`${p.key}_rest`];
@@ -183,7 +190,7 @@ const HAS_WORK_SQL = (code: string) => `SELECT EXISTS(
     OR ((meta->>'webTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'website'))
     OR ((meta->>'helloassoCheckedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'helloasso')
         AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"helloasso"}]'::jsonb))
-  ) LIMIT 1) AS has_work`;
+  ) HAVING COUNT(*) > 20) AS has_work`;
 
 // Plateformes suivies par les passes ciblées (mêmes marqueurs/conditions que
 // discover_targeted.py et progress.py). `social: true` = passe réseau social.
@@ -192,6 +199,7 @@ const PLATEFORMES = [
   { key: "facebook", label: "Facebook", col: "facebook", marker: "fbTargetedAt", social: true },
   { key: "helloasso", label: "HelloAsso", col: "helloasso", marker: "helloassoCheckedAt", social: true },
   { key: "website", label: "Site web", col: "website", marker: "webTargetedAt", social: false },
+  { key: "ai_verified", label: "Vérification AI", col: "ai_verified", marker: "aiVerifiedAt", social: false },
 ] as const;
 
 // Calcule un pourcentage arrondi à un chiffre après la virgule (ex: 42.7).

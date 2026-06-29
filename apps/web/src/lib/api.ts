@@ -21,12 +21,24 @@ export interface TerritoryStat {
 
 /** Avancement des passes d'enrichissement, par réseau social (affiché sur l'accueil). */
 export interface ProgressData {
-  territory: string;     // territoire en cours (ex. "Aveyron")
-  territoryCode?: string; // code du département en cours (ex. "12")
-  done?: string[];        // codes des départements déjà terminés (carte: vert)
-  next: string;          // prochain territoire prévu
-  total: number;         // nb total d'associations
-  platforms: { key: string; label: string; scanned: number; remaining: number; validated: number; pct: number }[];
+  territory: string;
+  territoryCode: string;
+  done: string[];
+  next: string;
+  total: number;
+  aiVerification: {
+    total: number;
+    verified: number;
+    pct: number;
+  };
+  platforms: {
+    key: string;
+    label: string;
+    scanned: number;
+    remaining: number;
+    validated: number;
+    pct: number;
+  }[];
 }
 
 // Préfixe commun à toutes les URLs : le front appelle "/api/..." et un proxy

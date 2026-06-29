@@ -499,6 +499,21 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
                     </div>
                   );
                 })}
+                
+                {/* Nouvelle barre pour la vérification IA */}
+                {progress.aiVerification && (
+                  <div style={{ marginTop: 8 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7, gap: 10 }}>
+                      <span style={{ fontSize: 14.5, fontWeight: 800, color: "var(--ink)" }}>Vérification IA (Ollama)</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--muted)" }}>
+                        <span style={{ color: "#19C37D" }}>{progress.aiVerification.verified.toLocaleString("fr-FR")}</span> assos vérifiées · {progress.aiVerification.pct}% vérifié
+                      </span>
+                    </div>
+                    <div style={{ height: 10, borderRadius: 999, background: "var(--bg-sunk)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${Math.max(progress.aiVerification.pct, 1.5)}%`, background: "#19C37D", borderRadius: 999, transition: "width .8s ease" }} />
+                    </div>
+                  </div>
+                )}
               </div>
               <p style={{ fontSize: 12.5, color: "var(--muted)", textAlign: "center", margin: "24px 0 0", fontStyle: "italic" }}>
                 Le balayage progresse tout seul ; les liens trouvés sont vérifiés par l'IA avant d'apparaître.
