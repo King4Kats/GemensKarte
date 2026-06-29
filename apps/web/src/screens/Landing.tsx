@@ -308,9 +308,13 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
           </p>
 
           {/* Sélecteur de territoire (carte SVG) */}
-          <div id="carte" style={{ width: "100%", maxWidth: 600, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .6s cubic-bezier(.22,1,.36,1) .38s forwards" }}>
-            <DepartmentMap onSelect={onSelect} activeCode={progress?.territoryCode} doneCodes={progress?.done} />
-          </div>
+          {progress ? (
+            <div id="carte" style={{ width: "100%", maxWidth: 600, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .4s cubic-bezier(.22,1,.36,1) forwards" }}>
+              <DepartmentMap onSelect={onSelect} activeCode={progress.territoryCode} doneCodes={progress.done} />
+            </div>
+          ) : (
+            <div style={{ width: "100%", maxWidth: 600, height: "40vh" }} />
+          )}
         </div>
 
         {/* Stats */}

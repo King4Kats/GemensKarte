@@ -59,11 +59,9 @@ def main() -> int:
         conn.execute(f"SET statement_timeout = {STATEMENT_TIMEOUT_MS}")
         for dept in targets[start:]:
             if conn.execute(SQL, (dept,)).fetchone()[0]:
-                print(dept)
-                return 0
-    print(targets[-1])
-    return 0
-
+                return dept
+    return targets[-1]
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    print(main())
+    raise SystemExit(0)

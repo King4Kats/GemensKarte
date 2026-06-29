@@ -44,7 +44,7 @@ def construire_requete(dept: str | None) -> str:
         cond_restant = [
             "location IS NOT NULL",
             f"NOT (COALESCE(social,'{{}}'::jsonb) ? '{col}')",
-            f"(meta ? '{marqueur}') IS NOT TRUE",
+            f"(meta->>'{marqueur}') IS NULL",
         ]
         if kind == "social":
             # passes sociales : on saute aussi celles qui ont déjà un candidat de cette plateforme
@@ -54,7 +54,7 @@ def construire_requete(dept: str | None) -> str:
             )
         # (passe site : aucune condition en plus, comme dans le code reciblé)
         where_restant = " AND ".join(cond_restant)
-        morceaux.append(f"count(*) FILTER (WHERE meta ? '{marqueur}') AS {nom}_scan")
+        morceaux.append(f"count(*) FILTER (WHERE (meta->>'{marqueur}') IS NOT NULL) AS {nom}_scan")
         morceaux.append(f"count(*) FILTER (WHERE {where_restant}) AS {nom}_rest")
         morceaux.append(f"count(*) FILTER (WHERE social ? '{col}') AS {nom}_val")
     morceaux.append("count(*) AS total")
@@ -67,10 +67,19 @@ def main():
     # Par défaut on suit la Vendée (85) — le territoire en cours d'enrichissement —
     # pour ne pas être noyé par les autres départements (ex. Occitanie, non scrapée).
     # --dept 31 pour un autre département ; --all pour toute la base.
-    ap.add_argument("--dept", default="85")
+    ap.add_argument("--dept", default="auto", help="auto = departement en cours, ou code (ex: 85)")
     ap.add_argument("--all", action="store_true", help="compte toute la base (ignore --dept)")
     args = ap.parse_args()
-    dept = None if args.all else args.dept
+    
+    if args.all:
+        dept = None
+    elif args.dept == "auto":
+        import target_dept
+        import sys as _sys
+        _sys.argv = ["target_dept.py"]
+        dept = str(target_dept.main())
+    else:
+        dept = args.dept
 
     with psycopg.connect(DSN) as c:
         cur = c.execute(construire_requete(dept))  # execute() renvoie le curseur en psycopg3
