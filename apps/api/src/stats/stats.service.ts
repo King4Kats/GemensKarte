@@ -105,6 +105,7 @@ export class StatsService {
       parts.push(`count(*) FILTER (WHERE social ? '${p.col}')::int AS ${p.key}_val`);
     }
     parts.push(`count(*) FILTER (WHERE (meta->'discovery') IS NOT NULL)::int AS ai_total`);
+    parts.push(`count(*) FILTER (WHERE (meta->>'verifiedAt') IS NOT NULL)::int AS ai_verified`);
     parts.push("count(*)::int AS total");
     // Scopé au département ACTIF (calculé dynamiquement) : le suivi suit le pipeline.
     const rows = await this.db.execute<Record<string, number>>(
@@ -119,6 +120,8 @@ export class StatsService {
       total: d.total,
       aiVerification: {
         total: d.ai_total,
+        verified: d.ai_verified,
+        pct: d.ai_total ? Math.round((d.ai_verified / d.ai_total) * 1000) / 10 : 100,
       },
       platforms: PLATEFORMES.map((p) => {
         const scanned = d[`${p.key}_scan`];
