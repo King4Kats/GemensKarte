@@ -8,13 +8,21 @@ import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import { DB, type Db } from "../db/db.module";
 
+const CACHE_TTL = 1000 * 60 * 5; // 5 minutes en millisecondes
+
 @Injectable()
 export class StatsService {
+  private cacheStats: { data: any; exp: number } | null = null;
+  private cacheProgress: { data: any; exp: number } | null = null;
+  private cacheTerritory: { data: any; exp: number } | null = null;
+
   // On reçoit ici l'accès à la base de données (db), fourni automatiquement par NestJS.
   constructor(@Inject(DB) private readonly db: Db) {}
 
   // Récupère toutes les statistiques en une seule requête, puis les met en forme.
   async getStats() {
+    if (this.cacheStats && Date.now() < this.cacheStats.exp) return this.cacheStats.data;
+
     const rows = await this.db.execute<{
       total: number;
       geolocalisees: number;
@@ -48,7 +56,7 @@ export class StatsService {
     const total = r.total;
 
     // Pour chaque indicateur on renvoie n (le nombre brut) et pct (le pourcentage par rapport au total).
-    return {
+    const res = {
       total,
       geolocalisees:    { n: r.geolocalisees,    pct: pct(r.geolocalisees, total) },
       avecDescription:  { n: r.avec_description, pct: pct(r.avec_description, total) },
@@ -60,6 +68,8 @@ export class StatsService {
       enrichies:        { n: r.enrichies,         pct: pct(r.enrichies, total) },
       ficheVide:        { n: total - r.avec_social, pct: pct(total - r.avec_social, total) },
     };
+    this.cacheStats = { data: res, exp: Date.now() + CACHE_TTL };
+    return res;
   }
 
   /** Enregistre un hit de fréquentation anonyme (kind='page'|'region'). */
@@ -88,6 +98,8 @@ export class StatsService {
   // Avancement des passes ciblées par plateforme (même calcul que progress.py) :
   // scannées / restantes / validées / %, pour l'afficher en direct sur l'accueil.
   async getProgress() {
+    if (this.cacheProgress && Date.now() < this.cacheProgress.exp) return this.cacheProgress.data;
+
     const active = await this.activeDept();
     const parts: string[] = [];
     for (const p of PLATEFORMES) {
@@ -112,7 +124,7 @@ export class StatsService {
       sql.raw(`SELECT ${parts.join(", ")} FROM associations WHERE department = '${active.code}'`),
     );
     const d = rows.rows[0]!;
-    return {
+    const res = {
       territory: active.nom,
       territoryCode: active.code,
       done: active.done,        // codes des départements déjà terminés (carte: vert)
@@ -137,11 +149,15 @@ export class StatsService {
         };
       }),
     };
+    this.cacheProgress = { data: res, exp: Date.now() + CACHE_TTL };
+    return res;
   }
 
   // Stats par DÉPARTEMENT (pour le "détail par territoire") : total + couverture des
   // liens. Le front regroupe ensuite par région via la table COVERED (nom + région).
   async getByTerritory() {
+    if (this.cacheTerritory && Date.now() < this.cacheTerritory.exp) return this.cacheTerritory.data;
+
     const rows = await this.db.execute<{
       department: string; total: number; geo: number;
       web: number; fb: number; ig: number; soc: number;
@@ -158,7 +174,7 @@ export class StatsService {
       GROUP BY department
       ORDER BY count(*) DESC
     `);
-    return rows.rows.map((r) => ({
+    const res = rows.rows.map((r) => ({
       department: r.department,
       total: r.total,
       geolocalisees: r.geo,
@@ -167,6 +183,8 @@ export class StatsService {
       avecInstagram: r.ig,
       avecSocial: r.soc,
     }));
+    this.cacheTerritory = { data: res, exp: Date.now() + CACHE_TTL };
+    return res;
   }
 }
 
