@@ -299,7 +299,7 @@ export class AssociationsService {
       SELECT id, name, city, department, description,
              social, meta -> 'quarantine' AS quarantine
       FROM associations WHERE ${where}
-      ORDER BY name LIMIT ${limit} OFFSET ${offset}
+      ORDER BY random() LIMIT ${limit} OFFSET ${offset}
     `);
     return {
       items: res.rows.map((r) => ({

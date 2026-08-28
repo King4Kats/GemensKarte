@@ -180,14 +180,24 @@ export const api = {
   // Tri collaboratif PUBLIC de la quarantaine (liens en attente d'arbitrage).
   quarantine: {
     // Liste paginée des fiches ayant des liens à arbitrer.
-    list: (page = 1, limit = 40) =>
-      getJSON<Paginated<QuarantineAssoc>>(`/associations/quarantine/public?page=${page}&limit=${limit}`),
+    list: async (page = 1, limit = 40): Promise<Paginated<QuarantineAssoc>> => {
+      // no-store : la file évolue à chaque arbitrage -> jamais servir une version en cache.
+      const res = await fetch(`${BASE}/associations/quarantine/public?page=${page}&limit=${limit}`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<Paginated<QuarantineAssoc>>;
+    },
     // Garde (→ affiché) ou jette un lien. Renvoie "rate" si l'anti-rafale a coupé (429).
     resolve: async (id: string, platform: string, action: "keep" | "drop"): Promise<"ok" | "rate"> => {
       const res = await fetch(`${BASE}/associations/${id}/quarantine/public`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ platform, action }),
+        // keepalive : la requête aboutit même si l'onglet du lien vérifié vient de s'ouvrir
+        // ou si l'utilisateur enchaîne vite -> plus d'arbitrage perdu (ERR_ABORTED).
+        keepalive: true,
+        cache: "no-store",
       });
       if (res.status === 429) return "rate";
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
