@@ -4,14 +4,14 @@
  * un Facebook, etc.). Il interroge la base PostgreSQL avec une seule requête SQL,
  * puis transforme le résultat en nombres + pourcentages prêts à afficher.
  */
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, OnModuleInit } from "@nestjs/common";
 import { sql } from "drizzle-orm";
 import { DB, type Db } from "../db/db.module";
 
 const CACHE_TTL = 1000 * 60 * 5; // 5 minutes en millisecondes
 
 @Injectable()
-export class StatsService {
+export class StatsService implements OnModuleInit {
   private cacheStats: { data: any; exp: number } | null = null;
   private cacheProgress: { data: any; exp: number } | null = null;
   private cacheTerritory: { data: any; exp: number } | null = null;
@@ -19,10 +19,33 @@ export class StatsService {
   // On reçoit ici l'accès à la base de données (db), fourni automatiquement par NestJS.
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  // Récupère toutes les statistiques en une seule requête, puis les met en forme.
+  // Pré-calcule les stats en arrière-plan au démarrage du serveur
+  onModuleInit() {
+    this.warmupCaches();
+    setInterval(() => this.warmupCaches(), 1000 * 60 * 4);
+  }
+
+  private async warmupCaches() {
+    try {
+      await Promise.all([
+        this.getStats(),
+        this.getProgress(),
+        this.getByTerritory()
+      ]);
+    } catch (err) {
+      console.error("Erreur lors du pré-calcul des stats:", err);
+    }
+  }
+
+  private pendingStats: Promise<any> | null = null;
   async getStats() {
     if (this.cacheStats && Date.now() < this.cacheStats.exp) return this.cacheStats.data;
+    if (this.pendingStats) return this.pendingStats;
+    this.pendingStats = this.forceGetStats().finally(() => { this.pendingStats = null; });
+    return this.pendingStats;
+  }
 
+  private async forceGetStats() {
     const rows = await this.db.execute<{
       total: number;
       geolocalisees: number;
@@ -80,26 +103,65 @@ export class StatsService {
     `);
   }
 
-  // Premier département de DEPT_ORDER qui a encore du travail (= territoire « en cours »
-  // réel). Renvoie son code, son nom et le nom du suivant. Si tout est fini -> dernier.
+  // Reliquat de travail ("fiches à faire", mêmes conditions que target_dept.py /
+  // discover_targeted.py) PAR département, en UNE requête groupée.
+  private async deptWorkload(): Promise<Map<string, number>> {
+    const codes = DEPT_ORDER.map(([c]) => `'${c}'`).join(", ");
+    const rows = await this.db.execute<{ department: string; inwork: number }>(
+      sql.raw(`
+        SELECT department, count(*)::int AS inwork
+        FROM associations
+        WHERE department IN (${codes}) AND location IS NOT NULL AND (
+          (meta->'discovery') IS NULL
+          OR ((meta->>'fbTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'facebook')
+              AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"facebook"}]'::jsonb))
+          OR ((meta->>'igTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'instagram')
+              AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"instagram"}]'::jsonb))
+          OR ((meta->>'webTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'website'))
+          OR ((meta->>'helloassoCheckedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'helloasso')
+              AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"helloasso"}]'::jsonb))
+        )
+        GROUP BY department
+      `),
+    );
+    const m = new Map<string, number>();
+    for (const r of rows.rows) m.set(r.department, r.inwork);
+    return m;
+  }
+
+  // Territoire « en cours » + liste des terminés, calculés PAR département (robuste).
+  // Un département compte comme "terminé" (carte: vert) dès que son reliquat passe SOUS
+  // le seuil de tolérance. Pourquoi un seuil : certaines fiches restent bloquées "à faire"
+  // à vie (recherche DDG qui a échoué sans poser son marqueur) ; sans tolérance, un tel
+  // résidu en tête de liste masquerait tous les départements suivants déjà finis et
+  // figerait le "territoire en cours" sur un département quasi terminé.
   private async activeDept(): Promise<{ code: string; nom: string; next: string; done: string[] }> {
-    for (let i = 0; i < DEPT_ORDER.length; i++) {
-      const [code, nom] = DEPT_ORDER[i];
-      const r = await this.db.execute<{ has_work: boolean }>(sql.raw(HAS_WORK_SQL(code)));
-      if (r.rows[0]?.has_work) {
-        // Les départements AVANT l'actif (dans l'ordre) sont terminés.
-        return { code, nom, next: DEPT_ORDER[i + 1]?.[1] ?? "—", done: DEPT_ORDER.slice(0, i).map((d) => d[0]) };
-      }
+    const work = await this.deptWorkload();
+    const remaining = (c: string) => work.get(c) ?? 0;
+    // Terminés = TOUS les dépts sous le seuil (indépendamment de leur position dans l'ordre).
+    const done = DEPT_ORDER.filter(([c]) => remaining(c) <= RESIDU_TOLERE).map(([c]) => c);
+    // Actif = 1er dépt de l'ordre avec un VRAI reste de travail (> seuil) = le front réel.
+    const idx = DEPT_ORDER.findIndex(([c]) => remaining(c) > RESIDU_TOLERE);
+    if (idx === -1) {
+      const last = DEPT_ORDER[DEPT_ORDER.length - 1];
+      return { code: last[0], nom: last[1], next: "—", done: DEPT_ORDER.slice(0, -1).map((d) => d[0]) };
     }
-    const last = DEPT_ORDER[DEPT_ORDER.length - 1];
-    return { code: last[0], nom: last[1], next: "—", done: DEPT_ORDER.slice(0, -1).map((d) => d[0]) };
+    const [code, nom] = DEPT_ORDER[idx];
+    const nextEntry = DEPT_ORDER.find(([c], i) => i > idx && remaining(c) > RESIDU_TOLERE);
+    return { code, nom, next: nextEntry?.[1] ?? "—", done };
   }
 
   // Avancement des passes ciblées par plateforme (même calcul que progress.py) :
   // scannées / restantes / validées / %, pour l'afficher en direct sur l'accueil.
+  private pendingProgress: Promise<any> | null = null;
   async getProgress() {
     if (this.cacheProgress && Date.now() < this.cacheProgress.exp) return this.cacheProgress.data;
+    if (this.pendingProgress) return this.pendingProgress;
+    this.pendingProgress = this.forceGetProgress().finally(() => { this.pendingProgress = null; });
+    return this.pendingProgress;
+  }
 
+  private async forceGetProgress() {
     const active = await this.activeDept();
     const parts: string[] = [];
     for (const p of PLATEFORMES) {
@@ -155,9 +217,15 @@ export class StatsService {
 
   // Stats par DÉPARTEMENT (pour le "détail par territoire") : total + couverture des
   // liens. Le front regroupe ensuite par région via la table COVERED (nom + région).
+  private pendingTerritory: Promise<any> | null = null;
   async getByTerritory() {
     if (this.cacheTerritory && Date.now() < this.cacheTerritory.exp) return this.cacheTerritory.data;
+    if (this.pendingTerritory) return this.pendingTerritory;
+    this.pendingTerritory = this.forceGetByTerritory().finally(() => { this.pendingTerritory = null; });
+    return this.pendingTerritory;
+  }
 
+  private async forceGetByTerritory() {
     const rows = await this.db.execute<{
       department: string; total: number; geo: number;
       web: number; fb: number; ig: number; soc: number;
@@ -197,18 +265,11 @@ const DEPT_ORDER: [string, string][] = [
   ["30", "Gard"], ["31", "Haute-Garonne"], ["32", "Gers"], ["48", "Lozère"],
   ["65", "Hautes-Pyrénées"], ["66", "Pyrénées-Orientales"], ["81", "Tarn"], ["82", "Tarn-et-Garonne"],
 ];
-// EXISTS « ce département a-t-il encore du travail ? » (identique à target_dept.py).
-const HAS_WORK_SQL = (code: string) => `SELECT EXISTS(
-  SELECT 1 FROM associations WHERE department = '${code}' AND location IS NOT NULL AND (
-    (meta->'discovery') IS NULL
-    OR ((meta->>'fbTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'facebook')
-        AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"facebook"}]'::jsonb))
-    OR ((meta->>'igTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'instagram')
-        AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"instagram"}]'::jsonb))
-    OR ((meta->>'webTargetedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'website'))
-    OR ((meta->>'helloassoCheckedAt') IS NULL AND NOT (COALESCE(social,'{}'::jsonb) ? 'helloasso')
-        AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"helloasso"}]'::jsonb))
-  ) HAVING COUNT(*) > 20) AS has_work`;
+// Seuil de tolérance des résidus : un département dont le reliquat de "fiches à faire"
+// est <= à ce nombre est considéré terminé (vert). Couvre les fiches bloquées à vie
+// (recherche DDG échouée sans marqueur) sans figer l'affichage. Un département réellement
+// en cours a des centaines/milliers de fiches restantes, très au-dessus de ce seuil.
+const RESIDU_TOLERE = 50;
 
 // Plateformes suivies par les passes ciblées (mêmes marqueurs/conditions que
 // discover_targeted.py et progress.py). `social: true` = passe réseau social.
