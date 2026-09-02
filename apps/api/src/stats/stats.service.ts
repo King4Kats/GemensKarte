@@ -264,6 +264,13 @@ const DEPT_ORDER: [string, string][] = [
   ["85", "Vendée"], ["46", "Lot"], ["12", "Aveyron"], ["09", "Ariège"], ["11", "Aude"],
   ["30", "Gard"], ["31", "Haute-Garonne"], ["32", "Gers"], ["48", "Lozère"],
   ["65", "Hautes-Pyrénées"], ["66", "Pyrénées-Orientales"], ["81", "Tarn"], ["82", "Tarn-et-Garonne"],
+  // Pays de la Loire (Vendée 85 déjà traitée, en tête de liste)
+  ["44", "Loire-Atlantique"], ["49", "Maine-et-Loire"], ["53", "Mayenne"], ["72", "Sarthe"],
+  // Normandie
+  ["14", "Calvados"], ["27", "Eure"], ["50", "Manche"], ["61", "Orne"], ["76", "Seine-Maritime"],
+  // Île-de-France
+  ["75", "Paris"], ["77", "Seine-et-Marne"], ["78", "Yvelines"], ["91", "Essonne"],
+  ["92", "Hauts-de-Seine"], ["93", "Seine-Saint-Denis"], ["94", "Val-de-Marne"], ["95", "Val-d'Oise"],
 ];
 // Seuil de tolérance des résidus : un département dont le reliquat de "fiches à faire"
 // est <= à ce nombre est considéré terminé (vert). Couvre les fiches bloquées à vie
