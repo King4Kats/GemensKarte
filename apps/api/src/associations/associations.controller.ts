@@ -90,10 +90,12 @@ export class AssociationsController {
     return this.service.resolveQuarantine(id, body);
   }
 
-  /** POST /api/associations — référencement public (statut "pending"). */
-  // Public mais limité en débit (anti-spam) : formulaire ouvert à tous.
+  /** POST /api/associations — création directe d'une fiche (statut "pending"). */
+  // Route d'ADMIN depuis le 12/10/2026 : elle était publique alors que le site ne s'en sert
+  // pas (le formulaire « recenser » passe par /api/contact/recenser, qui envoie un mail).
+  // Ouverte, elle permettait de créer des fiches non modérées, indexées dans la recherche.
   @Post()
-  @UseGuards(RateLimitGuard)
+  @UseGuards(AdminGuard, RateLimitGuard)
   create(
     @Body(new ZodValidationPipe(CreateAssociationInput)) body: CreateAssociationInput,
   ): Promise<Association> {

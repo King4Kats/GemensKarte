@@ -9,7 +9,7 @@ Ici on fait une recherche DÉDIÉE par plateforme, par exemple :
   - facebook  : site:facebook.com "<nom>" <ville>
   - instagram : site:instagram.com "<nom>" <ville>
   - helloasso : <nom> <ville> site:helloasso.com
-  - website   : "<nom>" <ville> Vendée   (site officiel, pour combler les trous)
+  - website   : "<nom>" <ville> <département>   (site officiel, pour combler les trous)
 
 Pour chaque asso SANS candidat sur cette plateforme, on lance la recherche, on extrait le(s)
 meilleur(s) candidat(s) et on les AJOUTE dans meta.discovery (socialCandidates ou
@@ -54,6 +54,7 @@ from datetime import datetime, timezone
 import psycopg
 
 from discover import search_with_retry
+from departements import nom_departement
 from lib_match import classify, normalize_social
 from helloasso import find_helloasso
 
@@ -91,7 +92,8 @@ def build_query(platform: str, asso: dict) -> str:
         # Même format que helloasso.py (déjà éprouvé) : nom + ville + site:helloasso.com.
         return f"{name} {city} site:helloasso.com"
     # website : on cible le site officiel. Les guillemets autour du nom = plus précis.
-    return f'"{name}" {city} Vendée'
+    # Nom du département réel (avant le 12/10/2026 : « Vendée » en dur pour toute la France).
+    return " ".join(p for p in (f'"{name}"', city, nom_departement(asso.get("department"))) if p)
 
 
 def extract_candidates(platform: str, asso: dict, results: list[dict]) -> list[dict]:

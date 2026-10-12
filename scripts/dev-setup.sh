@@ -17,12 +17,12 @@ pnpm db:seed
 
 # Données RNA réelles : le .gz n'est plus versionné (trop gros) → on le récupère
 # depuis la Release GitHub s'il est absent. Échec réseau toléré (setup continue).
-if [ ! -f data/rna/rna_covered.csv.gz ]; then
+if [ ! -f data/rna/rna_france.csv.gz ]; then
   bash scripts/get-rna.sh || echo "⚠️  RNA non récupéré (réseau ?) — import sauté."
 fi
-if [ -f data/rna/rna_covered.csv.gz ]; then
+if [ -f data/rna/rna_france.csv.gz ]; then
   echo "▶️  Import RNA (échantillon 5000, sans géocodage)…"
-  pnpm import:rna -- --file data/rna/rna_covered.csv.gz --no-geocode --limit 5000
+  pnpm import:rna -- --file data/rna/rna_france.csv.gz --no-geocode --limit 5000
 fi
 
 echo "▶️  Indexation Meilisearch…"

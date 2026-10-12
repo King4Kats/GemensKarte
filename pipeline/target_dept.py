@@ -45,7 +45,7 @@ SQL = """SELECT EXISTS(
           AND NOT (COALESCE(social,'{}'::jsonb) ? 'helloasso')
           AND NOT (COALESCE(meta->'discovery'->'socialCandidates','[]'::jsonb) @> '[{"platform":"helloasso"}]'::jsonb))
     )
-  LIMIT 1)"""
+  HAVING COUNT(*) > 50)"""
 
 
 def main() -> int:
@@ -59,9 +59,11 @@ def main() -> int:
         conn.execute(f"SET statement_timeout = {STATEMENT_TIMEOUT_MS}")
         for dept in targets[start:]:
             if conn.execute(SQL, (dept,)).fetchone()[0]:
-                return dept
-    return targets[-1]
+                print(dept)
+                return 0
+    print(targets[-1])
+    return 0
+
 
 if __name__ == "__main__":
-    print(main())
-    raise SystemExit(0)
+    raise SystemExit(main())

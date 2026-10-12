@@ -30,8 +30,14 @@ check "404 id inexistant"   "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/ass
 check "400 id non-uuid"     "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/associations/xxx")" '400'
 check "400 bbox invalide"   "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/associations?bbox=1,2,3")" '400'
 check "suggest (Meili)"     "$(curl -s "$BASE/search/suggest?q=theatr&limit=3" | j 'const d=JSON.parse(require("fs").readFileSync(0));console.log(Array.isArray(d)?"OK":"KO")')" 'OK'
-check "POST référencement"  "$(curl -s -X POST "$BASE/associations" -H 'content-type: application/json' -d '{"name":"Smoke Test Asso","categoryId":"sport","postalCode":"35000","city":"Rennes"}')" '"status":"pending"'
-check "POST 400 invalide"   "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/associations" -H 'content-type: application/json' -d '{"name":"x"}')" '400'
+# Création directe = route d'admin : sans jeton -> 401. (Ne JAMAIS lancer ce test en prod avec le
+# jeton : il crée une vraie fiche.)
+check "POST sans jeton 401"  "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/associations" -H 'content-type: application/json' -d '{"name":"Smoke Test Asso","categoryId":"sport","postalCode":"35000","city":"Rennes"}')" '401'
+if [ -n "${ADMIN_TOKEN:-}" ]; then
+check "POST référencement"  "$(curl -s -X POST "$BASE/associations" -H 'content-type: application/json' -H "x-admin-token: $ADMIN_TOKEN" -d '{"name":"Smoke Test Asso","categoryId":"sport","postalCode":"35000","city":"Rennes"}')" '"status":"pending"'
+check "POST 400 invalide"   "$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/associations" -H 'content-type: application/json' -H "x-admin-token: $ADMIN_TOKEN" -d '{"name":"x"}')" '400'
+fi
+check "geojson Corse 2A"    "$(curl -s -o /dev/null -w '%{http_code}' "$BASE/associations/geojson?department=2A&located=true")" '200'
 
 echo "────────────────────────────────────"
 echo "RÉSULTAT : $pass réussis, $fail échoués"

@@ -33,8 +33,8 @@ from readability import Document
 DSN = os.environ.get(
     "DATABASE_URL", "postgres://gemenskarte:gemenskarte@localhost:5433/gemenskarte"
 )
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-DEFAULT_MODEL = os.environ.get("VERIFY_MODEL", "qwen3.5:27b")
+OLLAMA_HOST = "http://127.0.0.1:11434"
+DEFAULT_MODEL = os.environ.get("VERIFY_MODEL", "gemma4:12b")
 
 _TAGS = re.compile(r"<[^>]+>")
 _WS = re.compile(r"\s+")
@@ -187,7 +187,7 @@ def verify_one(client, model, asso, disc, max_sites) -> dict:
     }
 
 
-def fetch_pending(conn, limit, dept, redo):
+def fetch_pending(conn, limit, dept, redo, shard=None):
     conds = ["(meta -> 'discovery') IS NOT NULL"]
     if not redo:
         # On (re)vérifie tant que NOTRE marqueur (verification.model) est absent :
@@ -195,12 +195,17 @@ def fetch_pending(conn, limit, dept, redo):
         conds.append("(meta -> 'verification' ->> 'model') IS NULL")
     if dept:
         conds.append("department = %(dept)s")
+    # Sharding : N/M -> chaque instance ne prend que SA part des lignes (hash stable de
+    # l'id). Permet 2 boucles verify en parallèle SANS retraiter les mêmes lignes.
+    sn, sm = (shard if shard else (0, 1))
+    if shard:
+        conds.append("(abs(hashtext(id::text)) %% %(shard_m)s) = %(shard_n)s")
     where = " AND ".join(conds)
     lim = "" if limit is None else f"LIMIT {int(limit)}"
     rows = conn.execute(
         f"""SELECT id, name, city, department, description, meta->'discovery'
             FROM associations WHERE {where} ORDER BY id {lim}""",
-        {"dept": dept},
+        {"dept": dept, "shard_n": sn, "shard_m": sm},
     ).fetchall()
     return [{"id": str(r[0]), "name": r[1], "city": r[2], "department": r[3],
              "description": r[4], "discovery": r[5]} for r in rows]
@@ -214,11 +219,17 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--max-sites", type=int, default=2)
     ap.add_argument("--model", default=DEFAULT_MODEL)
+    ap.add_argument("--shard", default=None, help="N/M : ne traite que la part N (sur M) des lignes")
     args = ap.parse_args()
+
+    shard = None
+    if args.shard:
+        sn, sm = args.shard.split("/")
+        shard = (int(sn), int(sm))
 
     client = Client(host=OLLAMA_HOST)
     with psycopg.connect(DSN, autocommit=False) as conn:
-        batch = fetch_pending(conn, args.limit, args.dept, args.redo)
+        batch = fetch_pending(conn, args.limit, args.dept, args.redo, shard)
         total = len(batch)
         print(f"SCRAP 2 — à vérifier : {total} assos | modèle {args.model} "
               f"(dry-run={args.dry_run}).", flush=True)

@@ -10,6 +10,16 @@ Archive l'ancien `social` + meta.enrichment dans meta.legacy (une seule fois) av
 
 Déterministe et rejouable : relancer recalcule tout depuis discovery+verification.
 
+DÉCISIONS HUMAINES (depuis le 12/10/2026) : le tri public de la quarantaine (API
+resolveQuarantine) et les décisions ponctuelles (ex. sites de mairie gardés, keptMairie) sont
+rangés dans meta.manual = {plateforme: {"action": "keep"|"drop", "url": ..., "at": ...}}.
+route() les applique EN DERNIER, après le calcul depuis l'IA : une décision humaine est une
+preuve que l'IA ne peut pas défaire. Avant, apply recalculait social/quarantine/dropped depuis
+les seuls verdicts IA et effaçait à chaque passage le travail des visiteurs (constaté en base
+le 12/10/2026 : les 188 sites de mairie gardés étaient tous retournés en quarantaine).
+Une décision ne vaut que pour SON url : un nouveau candidat sur la même plateforme est jugé
+normalement. Seule exception : un lien gardé mais confirmé MORT (liveness) est quand même retiré.
+
 Usage:
   python apply.py [--limit N] [--dept 85] [--dry-run]
                   [--apply-th 0.75] [--quar-th 0.40]
@@ -71,6 +81,34 @@ def is_confirmed_dead(health: dict, plat: str, url: str) -> bool:
             and int(rec.get("consecutiveFailures", 0)) >= 2)
 
 
+def apply_manual(manual: dict, social: dict, quarantine: dict, dropped: list) -> None:
+    """Applique les décisions humaines de meta.manual sur le résultat calculé (modifié en place).
+
+    keep : l'url va dans social, sort de la quarantaine et des jetés (si c'est la même url).
+    drop : l'url sort de social et de la quarantaine, et figure UNE fois dans dropped avec
+           manualDrop=true (trace du tri humain, qui n'était plus conservée avant).
+    """
+    for plat, m in (manual or {}).items():
+        url = (m or {}).get("url")
+        action = (m or {}).get("action")
+        if not url or action not in ("keep", "drop"):
+            continue
+        same = lambda d: d.get("platform") == plat and d.get("url") == url
+        dropped[:] = [d for d in dropped if not same(d)]
+        if action == "keep":
+            social[plat] = url
+            if (quarantine.get(plat) or {}).get("url") == url:
+                quarantine.pop(plat)
+        else:
+            if social.get(plat) == url:
+                social.pop(plat)
+            if (quarantine.get(plat) or {}).get("url") == url:
+                quarantine.pop(plat)
+            dropped.append({"platform": plat, "url": url, "score": 0.0, "verdict": "manual",
+                            "manualDrop": True, "reason": "rejeté au tri humain",
+                            "at": m.get("at")})
+
+
 def route(asso: dict, apply_th: float, quar_th: float) -> dict:
     disc = asso["discovery"] or {}
     ver = (asso["verification"] or {}).get("results", {})
@@ -128,6 +166,9 @@ def route(asso: dict, apply_th: float, quar_th: float) -> dict:
         else:
             dropped.append({"platform": key, **rec})
 
+    # Décisions humaines (meta.manual), appliquées APRÈS l'IA : elles l'emportent.
+    apply_manual(asso.get("manual") or {}, social, quarantine, dropped)
+
     # Gate liveness : un lien retenu mais confirmé MORT (>=2 échecs HTTP, liveness.py)
     # est retiré de social -> dropped. Ne s'applique qu'à website/helloasso (les seuls
     # vérifiables par HTTP ; FB/IG/LI ne sont jamais marqués 'dead' par liveness).
@@ -150,13 +191,15 @@ def fetch_pending(conn, limit, dept):
     rows = conn.execute(
         f"""SELECT id, name, social, meta->'discovery', meta->'verification',
                    (meta ? 'legacy') AS has_legacy, meta->'enrichment',
-                   meta->'legacy'->'social', meta->>'helloassoFound', meta->'linkHealth'
+                   meta->'legacy'->'social', meta->>'helloassoFound', meta->'linkHealth',
+                   meta->'manual'
             FROM associations WHERE {where} ORDER BY id {lim}""",
         {"dept": dept},
     ).fetchall()
     return [{"id": str(r[0]), "name": r[1], "social_old": r[2], "discovery": r[3],
              "verification": r[4], "has_legacy": r[5], "enrichment": r[6],
-             "legacy_social": r[7], "helloasso_found": r[8], "link_health": r[9]} for r in rows]
+             "legacy_social": r[7], "helloasso_found": r[8], "link_health": r[9],
+             "manual": r[10]} for r in rows]
 
 
 def main() -> int:

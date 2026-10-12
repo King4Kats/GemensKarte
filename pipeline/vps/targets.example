@@ -1,0 +1,6 @@
+# Ordre de traitement des départements (copier en `.targets` sur CHAQUE VPS).
+# Le pipeline travaille le 1er département qui a encore plus de 50 fiches à traiter
+# (target_dept.py), puis avance tout seul. Garder cet ordre IDENTIQUE à DEPT_ORDER
+# (apps/api/src/stats/stats.service.ts), sinon le site et les VPS divergent.
+# runner.sh lit ce fichier UNE fois au démarrage : relancer les runners après modification.
+85,46,12,09,11,30,31,32,48,65,66,81,82,44,49,53,72,14,27,50,61,76,75,77,78,91,92,93,94,95

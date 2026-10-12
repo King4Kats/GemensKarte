@@ -117,6 +117,9 @@ const boolish = z.preprocess(
 
 // Tous les filtres possibles de la liste d'associations, tels qu'ils arrivent
 // dans l'URL (ex : /api/associations?q=judo&category=sport&page=2).
+/** Code département : 2 ou 3 chiffres (01…95, 971…976…) ou Corse 2A / 2B. */
+export const DepartmentCode = z.string().trim().toUpperCase().regex(/^(\d{2,3}|2[AB])$/);
+
 export const ListAssociationsQuery = z.object({
   q: z.string().trim().min(1).optional(), // texte recherché
   category: z.enum(CATEGORY_IDS).optional(),
@@ -128,7 +131,7 @@ export const ListAssociationsQuery = z.object({
       ),
     )
     .optional(),
-  department: z.string().regex(/^\d{2,3}$/).optional(),
+  department: DepartmentCode.optional(),
   bbox: BBoxSchema.optional(),
   near: NearSchema.optional(),
   /** Ne renvoyer que les associations géolocalisées (pour la carte). */
@@ -143,7 +146,7 @@ export type ListAssociationsQuery = z.infer<typeof ListAssociationsQuery>;
 export const SuggestQuery = z.object({
   q: z.string().trim().min(1),
   limit: numeric.int().min(1).max(20).default(8),
-  department: z.string().regex(/^\d{2,3}$/).optional(),
+  department: DepartmentCode.optional(),
 });
 export type SuggestQuery = z.infer<typeof SuggestQuery>;
 
@@ -151,7 +154,7 @@ export type SuggestQuery = z.infer<typeof SuggestQuery>;
 // (nom OU descriptif), pour masquer les points non concernés sur la carte.
 export const MatchQuery = z.object({
   q: z.string().trim().min(1),
-  department: z.string().regex(/^\d{2,3}$/).optional(),
+  department: DepartmentCode.optional(),
 });
 export type MatchQuery = z.infer<typeof MatchQuery>;
 

@@ -310,7 +310,9 @@ export class AssociationsService {
     };
   }
 
-  /** Arbitre un lien en quarantaine : keep -> social ; drop -> meta.dropped. Idempotent. */
+  /** Arbitre un lien en quarantaine : keep -> social ; drop -> meta.dropped. Idempotent.
+   *  Dans les deux cas la décision est aussi écrite dans meta.manual[platform]
+   *  ({ action, url, at }) pour qu'apply.py ne la défasse pas au passage suivant. */
   async resolveQuarantine(id: string, input: ResolveQuarantineInput): Promise<void> {
     const { platform, action } = input;
     if (action === "keep") {
@@ -318,7 +320,14 @@ export class AssociationsService {
       await this.db.execute(sql`
         UPDATE associations SET
           social = COALESCE(social, '{}'::jsonb) || jsonb_build_object(${platform}::text, meta->'quarantine'->${platform}->>'url'),
-          meta = jsonb_set(meta, '{quarantine}', (meta->'quarantine') - ${platform}::text)
+          -- La décision humaine est rangée dans meta.manual : apply.py la relit à chaque
+          -- passage et l'applique en dernier (sinon il recalculerait tout depuis l'IA).
+          meta = jsonb_set(
+            jsonb_set(meta, '{quarantine}', (meta->'quarantine') - ${platform}::text),
+            '{manual}',
+            COALESCE(meta->'manual', '{}'::jsonb) || jsonb_build_object(${platform}::text,
+              jsonb_build_object('action', 'keep', 'url', meta->'quarantine'->${platform}->>'url',
+                                 'at', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))))
         WHERE id = ${id} AND meta->'quarantine' ? ${platform}
       `);
     } else {
@@ -326,9 +335,14 @@ export class AssociationsService {
       await this.db.execute(sql`
         UPDATE associations SET
           meta = jsonb_set(
-            jsonb_set(meta, '{dropped}', COALESCE(meta->'dropped','[]'::jsonb)
-              || jsonb_build_array(jsonb_build_object('platform', ${platform}::text,
-                   'manualDrop', true) || (meta->'quarantine'->${platform}))),
+            jsonb_set(
+              jsonb_set(meta, '{dropped}', COALESCE(meta->'dropped','[]'::jsonb)
+                || jsonb_build_array(jsonb_build_object('platform', ${platform}::text,
+                     'manualDrop', true) || (meta->'quarantine'->${platform}))),
+              '{manual}',
+              COALESCE(meta->'manual', '{}'::jsonb) || jsonb_build_object(${platform}::text,
+                jsonb_build_object('action', 'drop', 'url', meta->'quarantine'->${platform}->>'url',
+                                   'at', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')))),
             '{quarantine}', (meta->'quarantine') - ${platform}::text)
         WHERE id = ${id} AND meta->'quarantine' ? ${platform}
       `);

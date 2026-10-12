@@ -1,0 +1,4 @@
+# VPS 1 : passes Facebook et site web. Copier en `.passes` à côté de runner.sh.
+# LABEL  MOTEURS (liste avec repli)  SCRIPT ARGS...   ({DEPT} = département actif)
+tgtfb   google,bing,yahoo      discover_targeted.py --platform facebook --limit 120 --sleep 2.0 --dept {DEPT}
+tgtweb  brave,bing,yahoo       discover_targeted.py --platform website --limit 120 --sleep 2.0 --dept {DEPT}

@@ -15,6 +15,7 @@ import os, re, json, argparse, sys, time
 from datetime import datetime, timezone
 import psycopg
 from discover import search_with_retry
+from departements import nom_departement
 from lib_match import host_of, base_domain, DIRECTORY_HOSTS, SOCIAL_HOSTS, tokens, strip_accents
 
 DSN = os.environ.get("DATABASE_URL", "postgres://gemenskarte:gemenskarte@localhost:5433/gemenskarte")
@@ -67,15 +68,16 @@ def main():
     ts = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with psycopg.connect(DSN, autocommit=False) as c:
         rows = c.execute(
-            """SELECT id, name, city FROM associations
+            """SELECT id, name, city, department FROM associations
                WHERE social ? 'facebook'
                  AND coalesce(website, social->>'website') IS NULL
                  AND NOT (meta ? 'fbWebsiteCheckedAt')
                ORDER BY id LIMIT %s""", (args.limit,)).fetchall()
         print(f"FB-only à sonder : {len(rows)} (sleep={args.sleep}, apply={args.apply})", flush=True)
         n_found = 0
-        for aid, name, city in rows:
-            q = f"{name} {city or ''} Vendée"
+        for aid, name, city, dept in rows:
+            # Nom du département réel (avant le 12/10/2026 : « Vendée » en dur).
+            q = " ".join(p for p in (name, city or "", nom_departement(dept)) if p)
             try:
                 results = search_with_retry(q)
             except Exception as e:

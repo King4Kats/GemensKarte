@@ -1,0 +1,5 @@
+# VPS 2 : passes Instagram, HelloAsso et découverte générale. Copier en `.passes`.
+# LABEL  MOTEURS (liste avec repli)  SCRIPT ARGS...   ({DEPT} = département actif)
+tgtig   bing,yahoo,brave       discover_targeted.py --platform instagram --limit 120 --sleep 2.0 --dept {DEPT}
+ha      startpage,bing,yahoo   discover_targeted.py --platform helloasso --limit 150 --sleep 2.0 --dept {DEPT}
+disc    bing,yahoo,brave       discover.py --limit 800 --sleep 1.2 --dept {DEPT}

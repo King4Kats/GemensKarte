@@ -39,3 +39,6 @@ __pycache__/
 .dbpass
 pipeline/.dbpass
 data/rna/rna_occitanie.csv.gz
+
+# livre BookStack : sortie regénérée à chaque construction
+docs/livre/sortie/
