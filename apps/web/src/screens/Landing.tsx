@@ -157,7 +157,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
   const stats = [
     { n: total !== null ? animCount.toLocaleString("fr-FR") : "…", l: "associations" },
     { n: String(COVERED_CODES.length), l: COVERED_CODES.length > 1 ? "territoires" : "territoire" },
-    { n: "7", l: "univers" },
+    { n: "7", l: "domaines" },
     { n: "100%", l: "code ouvert" },
   ];
 
@@ -564,7 +564,7 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
                 { key: "avecFacebook",   icon: "facebook", label: "Page Facebook",            color: "#1877f2" },
                 { key: "avecInstagram",  icon: "insta",    label: "Compte Instagram",         color: "#e1306c" },
                 { key: "avecSocial",     icon: "check",    label: "Fiche avec au moins 1 lien", color: "#00d68f" },
-                { key: "ficheVide",      icon: "square",   label: "Fiche RNA seule",          color: "#9ca3af" },
+                { key: "ficheVide",      icon: "square",   label: "Non scrapée (infos RNA seulement)",          color: "#9ca3af" },
               ] as const).map(({ key, icon, label, color }) => {
                 const stat = dataStats[key] as { n: number; pct: number } | undefined;
                 if (!stat) return null;

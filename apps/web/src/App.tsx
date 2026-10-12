@@ -25,20 +25,39 @@ export function App() {
   const [screen, setScreen] = useState<Screen>(() => screenFromHash() ?? "landing");
   const [dept, setDept] = useState<DeptMeta | null>(null);
 
-  // Suit les changements d'ancre (#quarantaine) pour basculer d'écran.
+  // Suit les changements d'historique (bouton retour/suivant du navigateur)
   useEffect(() => {
-    const onHash = () => {
+    const onPopState = (e: PopStateEvent) => {
       const s = screenFromHash();
-      if (s) setScreen(s);
-      else if (screen === "quarantaine") setScreen("landing");
+      if (s === "quarantaine") {
+        setScreen("quarantaine");
+      } else if (window.location.hash === "#carte") {
+        setScreen("map");
+        if (e.state && e.state.dept) setDept(e.state.dept);
+      } else {
+        setScreen("landing");
+      }
     };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-  }, [screen]);
+    window.addEventListener("popstate", onPopState);
+
+    // Initialisation de l'état pour la page d'accueil si on arrive dessus
+    if (!window.history.state && !window.location.hash) {
+      window.history.replaceState({ screen: 'landing' }, "", window.location.pathname);
+    } else if (window.location.hash === "#carte" && window.history.state?.dept) {
+      setDept(window.history.state.dept);
+      setScreen("map");
+    }
+
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
 
   const goHome = () => {
-    if (window.location.hash) history.replaceState(null, "", window.location.pathname);
-    setScreen("landing");
+    if (window.history.state?.screen === 'map' || window.history.state?.screen === 'quarantaine') {
+      window.history.back();
+    } else {
+      if (window.location.hash) window.history.pushState({ screen: 'landing' }, "", window.location.pathname);
+      setScreen("landing");
+    }
   };
 
   // Suivi de fréquentation anonyme : une « page vue » à chaque changement d'écran.
@@ -49,6 +68,7 @@ export function App() {
     api.track("region", { dept: d.code });
     setDept(d);
     setScreen("map");
+    window.history.pushState({ screen: 'map', dept: d }, "", "#carte");
   };
 
   return (
@@ -60,7 +80,7 @@ export function App() {
         <MapView
           initial={{}}
           dept={dept}
-          onHome={() => setScreen("landing")}
+          onHome={goHome}
         />
       )}
       {screen === "quarantaine" && <Quarantine onHome={goHome} />}

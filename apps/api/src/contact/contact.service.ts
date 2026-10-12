@@ -51,13 +51,33 @@ export class ContactService {
       this.logger.log(`[EMAIL SIMULÉ] Sujet: ${subject}\n${html.replace(/<[^>]+>/g, "")}`);
       return;
     }
+    const sender = process.env.SMTP_FROM ?? process.env.SMTP_USER;
     await this.transporter.sendMail({
-      from: `"GemensKarte" <${process.env.SMTP_USER}>`,
+      from: `"GemensKarte" <${sender}>`,
       to: DEST,
       subject,
       html,
     });
     this.logger.log(`Email envoyé → ${DEST} : ${subject}`);
+  }
+
+  // Template HTML partagé pour avoir un beau rendu "GemensKarte"
+  private wrapHtml(title: string, content: string): string {
+    return `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #f9fafb; padding: 20px; border-radius: 12px;">
+        <div style="background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+          <h2 style="color: #111827; font-size: 20px; margin-top: 0; margin-bottom: 24px; border-bottom: 2px solid #3B82F6; padding-bottom: 10px;">
+            ${title}
+          </h2>
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 15px; color: #374151;">
+            ${content}
+          </table>
+          <p style="margin-top: 30px; font-size: 13px; color: #6B7280; text-align: center;">
+            Notification envoyée automatiquement par <b>GemensKarte</b>.
+          </p>
+        </div>
+      </div>
+    `;
   }
 
   // Construit un email récapitulatif d'une demande de référencement
@@ -66,17 +86,15 @@ export class ContactService {
     name: string; category: string; city: string; postalCode?: string;
     email: string; website?: string; description: string;
   }): Promise<void> {
-    const html = `
-      <h2>Nouvelle demande de référencement</h2>
-      <table>
-        <tr><td><b>Association</b></td><td>${esc(data.name)}</td></tr>
-        <tr><td><b>Catégorie</b></td><td>${esc(data.category)}</td></tr>
-        <tr><td><b>Ville</b></td><td>${esc(data.city)}${data.postalCode ? ` (${esc(data.postalCode)})` : ""}</td></tr>
-        <tr><td><b>Email contact</b></td><td>${esc(data.email)}</td></tr>
-        ${data.website ? `<tr><td><b>Site web</b></td><td>${esc(data.website)}</td></tr>` : ""}
-        <tr><td><b>Description</b></td><td>${esc(data.description)}</td></tr>
-      </table>
+    const tableContent = `
+      <tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Association</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">${esc(data.name)}</td></tr>
+      <tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Catégorie</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">${esc(data.category)}</td></tr>
+      <tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Ville</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">${esc(data.city)}${data.postalCode ? ` (${esc(data.postalCode)})` : ""}</td></tr>
+      <tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Email contact</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><a href="mailto:${esc(data.email)}" style="color: #3B82F6;">${esc(data.email)}</a></td></tr>
+      ${data.website ? `<tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Site web</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><a href="${esc(data.website)}" style="color: #3B82F6;">${esc(data.website)}</a></td></tr>` : ""}
+      <tr><td style="padding: 10px 0;"><b>Description</b></td><td style="padding: 10px 0;">${esc(data.description)}</td></tr>
     `;
+    const html = this.wrapHtml("Nouvelle demande de référencement", tableContent);
     await this.send(`[GemensKarte] Référencement — ${data.name}`, html);
   }
 
@@ -85,15 +103,13 @@ export class ContactService {
   async deferencer(data: {
     name: string; reason: string; message?: string; email?: string;
   }): Promise<void> {
-    const html = `
-      <h2>Demande de déférencement</h2>
-      <table>
-        <tr><td><b>Association</b></td><td>${esc(data.name)}</td></tr>
-        <tr><td><b>Raison</b></td><td>${esc(data.reason)}</td></tr>
-        ${data.message ? `<tr><td><b>Message</b></td><td>${esc(data.message)}</td></tr>` : ""}
-        ${data.email ? `<tr><td><b>Email contact</b></td><td>${esc(data.email)}</td></tr>` : ""}
-      </table>
+    const tableContent = `
+      <tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6; width: 30%;"><b>Association</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">${esc(data.name)}</td></tr>
+      <tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Raison</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">${esc(data.reason)}</td></tr>
+      ${data.message ? `<tr><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;"><b>Message</b></td><td style="padding: 10px 0; border-bottom: 1px solid #f3f4f6;">${esc(data.message)}</td></tr>` : ""}
+      ${data.email ? `<tr><td style="padding: 10px 0;"><b>Email contact</b></td><td style="padding: 10px 0;"><a href="mailto:${esc(data.email)}" style="color: #3B82F6;">${esc(data.email)}</a></td></tr>` : ""}
     `;
+    const html = this.wrapHtml("Demande de déférencement", tableContent);
     await this.send(`[GemensKarte] Déférencement — ${data.name}`, html);
   }
 }

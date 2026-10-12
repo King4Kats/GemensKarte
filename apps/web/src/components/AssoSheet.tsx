@@ -199,6 +199,20 @@ export function AssoSheet({ asso, onClose }: { asso: Association | null; onClose
                   </span>
                 )}
               </div>
+
+              <div style={{ position: "relative", marginTop: 18 }}>
+                <a
+                  href={`https://www.ecosia.org/search?q=${encodeURIComponent(`association ${asso.name} ${asso.city ?? ""}`.trim())}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", background: "var(--bg)", borderRadius: "var(--radius-pill)", border: "1px solid var(--hairline)", color: "var(--ink)", fontSize: 13, fontWeight: 700, textDecoration: "none", boxShadow: "var(--shadow-sm)" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-soft)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "var(--bg)"; }}
+                >
+                  <Icon name="search" size={14} stroke={2.4} />
+                  Rechercher sur Ecosia
+                </a>
+              </div>
             </div>
 
             <div style={{ padding: "22px 26px 30px" }}>

@@ -56,8 +56,14 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
     else if (e.key === "ArrowUp") { e.preventDefault(); setHi((h) => Math.max(h - 1, -1)); }
     else if (e.key === "Enter") {
       e.preventDefault();
-      if (hi >= 0 && suggestions[hi]) onPick(suggestions[hi]);
-      else onSubmit?.();
+      if (hi >= 0 && suggestions[hi]) {
+        onPick(suggestions[hi]);
+        setOpen(false);
+      }
+      else {
+        onSubmit?.();
+        setOpen(false);
+      }
     } else if (e.key === "Escape") setOpen(false);
   };
 
@@ -92,7 +98,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
             fontSize: big ? 19 : 15, color: "var(--ink)", letterSpacing: "-0.01em",
           }}
         />
-        <button className={big ? "btn btn-accent btn-md" : "btn btn-accent btn-sm"} style={{ flexShrink: 0 }} onClick={() => onSubmit?.()}>
+        <button className={big ? "btn btn-accent btn-md" : "btn btn-accent btn-sm"} style={{ flexShrink: 0 }} onClick={() => { onSubmit?.(); setOpen(false); }}>
           {big ? "Explorer" : "Go"}
           {big && <Icon name="arrow" size={16} stroke={2.6} />}
         </button>
@@ -146,7 +152,7 @@ export function SearchBar({ size = "lg", autoFocus = false, value, onChange, onS
               <button
                 key={s.id}
                 onMouseEnter={() => setHi(i)}
-                onClick={() => onPick(s)}
+                onClick={() => { onPick(s); setOpen(false); }}
                 style={{
                   display: "flex", alignItems: "center", gap: 12, width: "100%",
                   textAlign: "left", border: 0, cursor: "pointer",
