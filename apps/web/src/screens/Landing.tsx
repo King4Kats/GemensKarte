@@ -307,14 +307,12 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
             Une carte, mille élans citoyens.
           </p>
 
-          {/* Sélecteur de territoire (carte SVG) */}
-          {progress ? (
-            <div id="carte" style={{ width: "100%", maxWidth: 600, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .4s cubic-bezier(.22,1,.36,1) forwards" }}>
-              <DepartmentMap onSelect={onSelect} activeCode={progress.territoryCode} doneCodes={progress.done} />
-            </div>
-          ) : (
-            <div style={{ width: "100%", maxWidth: 600, height: "40vh" }} />
-          )}
+          {/* Sélecteur de territoire (carte SVG) : affichée TOUT DE SUITE (les tracés sont
+              dans le code), sans attendre l'API. Les couleurs « en cours / terminé »
+              s'appliquent dès que l'avancement (progress) arrive. */}
+          <div id="carte" style={{ width: "100%", maxWidth: 600, position: "relative", zIndex: 50, opacity: 0, animation: "cmSlideUp .4s cubic-bezier(.22,1,.36,1) forwards" }}>
+            <DepartmentMap onSelect={onSelect} activeCode={progress?.territoryCode} doneCodes={progress?.done} />
+          </div>
         </div>
 
         {/* Stats */}

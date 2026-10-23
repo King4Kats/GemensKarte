@@ -19,7 +19,9 @@ export class StatsService implements OnModuleInit {
   // On reçoit ici l'accès à la base de données (db), fourni automatiquement par NestJS.
   constructor(@Inject(DB) private readonly db: Db) {}
 
-  // Pré-calcule les stats en arrière-plan au démarrage du serveur
+  // Pré-calcule les stats en arrière-plan au démarrage du serveur, puis les RECALCULE
+  // toutes les 4 min (avant l'expiration des 5 min). Les visiteurs lisent toujours le
+  // dernier résultat en mémoire : ils n'attendent jamais le calcul (plusieurs secondes).
   onModuleInit() {
     this.warmupCaches();
     setInterval(() => this.warmupCaches(), 1000 * 60 * 4);
@@ -28,21 +30,38 @@ export class StatsService implements OnModuleInit {
   private async warmupCaches() {
     try {
       await Promise.all([
-        this.getStats(),
-        this.getProgress(),
-        this.getByTerritory()
+        this.refresh("stats"),
+        this.refresh("progress"),
+        this.refresh("territory"),
       ]);
     } catch (err) {
       console.error("Erreur lors du pré-calcul des stats:", err);
     }
   }
 
+  // Lance (ou réutilise s'il tourne déjà) le recalcul d'un cache.
+  private refresh(kind: "stats" | "progress" | "territory"): Promise<any> {
+    if (kind === "stats") {
+      return (this.pendingStats ??= this.forceGetStats().finally(() => { this.pendingStats = null; }));
+    }
+    if (kind === "progress") {
+      return (this.pendingProgress ??= this.forceGetProgress().finally(() => { this.pendingProgress = null; }));
+    }
+    return (this.pendingTerritory ??= this.forceGetByTerritory().finally(() => { this.pendingTerritory = null; }));
+  }
+
+  // « Stale-while-revalidate » : s'il existe un résultat en mémoire, on le renvoie TOUT DE
+  // SUITE, même un peu périmé, et on relance le calcul en arrière-plan s'il a expiré.
+  // On n'attend le calcul que la toute première fois (aucun résultat encore en mémoire).
+  private serve(cache: { data: any; exp: number } | null, kind: "stats" | "progress" | "territory") {
+    if (!cache) return this.refresh(kind);
+    if (Date.now() >= cache.exp) this.refresh(kind).catch((err) => console.error(`Recalcul ${kind}:`, err));
+    return cache.data;
+  }
+
   private pendingStats: Promise<any> | null = null;
   async getStats() {
-    if (this.cacheStats && Date.now() < this.cacheStats.exp) return this.cacheStats.data;
-    if (this.pendingStats) return this.pendingStats;
-    this.pendingStats = this.forceGetStats().finally(() => { this.pendingStats = null; });
-    return this.pendingStats;
+    return this.serve(this.cacheStats, "stats");
   }
 
   private async forceGetStats() {
@@ -155,10 +174,7 @@ export class StatsService implements OnModuleInit {
   // scannées / restantes / validées / %, pour l'afficher en direct sur l'accueil.
   private pendingProgress: Promise<any> | null = null;
   async getProgress() {
-    if (this.cacheProgress && Date.now() < this.cacheProgress.exp) return this.cacheProgress.data;
-    if (this.pendingProgress) return this.pendingProgress;
-    this.pendingProgress = this.forceGetProgress().finally(() => { this.pendingProgress = null; });
-    return this.pendingProgress;
+    return this.serve(this.cacheProgress, "progress");
   }
 
   private async forceGetProgress() {
@@ -219,10 +235,7 @@ export class StatsService implements OnModuleInit {
   // liens. Le front regroupe ensuite par région via la table COVERED (nom + région).
   private pendingTerritory: Promise<any> | null = null;
   async getByTerritory() {
-    if (this.cacheTerritory && Date.now() < this.cacheTerritory.exp) return this.cacheTerritory.data;
-    if (this.pendingTerritory) return this.pendingTerritory;
-    this.pendingTerritory = this.forceGetByTerritory().finally(() => { this.pendingTerritory = null; });
-    return this.pendingTerritory;
+    return this.serve(this.cacheTerritory, "territory");
   }
 
   private async forceGetByTerritory() {
