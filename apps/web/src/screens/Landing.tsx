@@ -694,8 +694,24 @@ export function Landing({ onSelect, onExplore, onPortal, dept }: {
         <a href="/territoires" style={{ fontSize: 13, color: "var(--muted)", textDecoration: "none", fontWeight: 600, fontFamily: "var(--font)" }}>
           Associations par commune
         </a>
-        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-          Données&nbsp;: RNA © Ministère de l'Intérieur · Cartographie&nbsp;: OpenStreetMap
+        {/* Licences des données (distinctes de la licence du code, PolyForm Noncommercial) :
+            RNA + enrichissements GemensKarte = Licence Ouverte 2.0 ; fond de carte = ODbL. */}
+        <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, lineHeight: 1.5 }}>
+          Données&nbsp;: RNA © Ministère de l'Intérieur et enrichissements GemensKarte, sous{" "}
+          <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/" target="_blank" rel="noopener noreferrer license"
+            style={{ color: "var(--muted)", fontWeight: 600 }}>
+            Licence Ouverte 2.0
+          </a>
+          {" "}(réutilisation libre avec mention de la source) · Cartographie&nbsp;: ©{" "}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer license"
+            style={{ color: "var(--muted)", fontWeight: 600 }}>
+            OpenStreetMap
+          </a>
+          {" "}(ODbL) · Code&nbsp;:{" "}
+          <a href="https://github.com/King4Kats/GemensKarte/blob/main/LICENSE" target="_blank" rel="noopener noreferrer license"
+            style={{ color: "var(--muted)", fontWeight: 600 }}>
+            PolyForm Noncommercial
+          </a>
         </p>
         <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
           Réalisé par{" "}

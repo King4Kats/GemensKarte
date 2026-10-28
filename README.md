@@ -1,7 +1,7 @@
 # 🎉 GemensKarte
 
 > **La carte du territoire de tes assos.**
-> Un « Google Maps » joyeux, accessible et open-source pour répertorier, découvrir et
+> Un « Google Maps » joyeux, accessible et à code ouvert (non commercial) pour répertorier, découvrir et
 > connecter les associations locales — Bretagne · Pays de la Loire · Normandie.
 > **18 554 associations** géolocalisées, enrichies et nettoyées **automatiquement**.
 
@@ -122,8 +122,9 @@ jamais au châssis.** Accessibilité : couleur jamais seule (émoji + libellé),
 
 ---
 
-Projet associatif, à **code ouvert (non commercial)**, fait avec ❤️ en Vendée. Données : RNA ©
-Ministère de l'Intérieur · Agenda : OpenAgenda · Cartographie : OpenStreetMap. Contributions bienvenues 💚
+Projet associatif, à **code ouvert (non commercial)**, fait avec ❤️ en Vendée. Données : RNA
+(Licence Ouverte 2.0, Ministère de l'Intérieur) · Agenda : OpenAgenda · Cartographie : OpenStreetMap
+(ODbL). Contributions bienvenues 💚
 
 ---
 
@@ -136,3 +137,25 @@ commercial** : particuliers, associations, recherche, enseignement, collectivit�
 organismes publics. Tout **usage commercial** nécessite un accord séparé avec l'auteur.
 
 Copyright 2026 Flavien Auvray — GemensKarte.
+
+> ⚠️ « Code ouvert » ≠ « open source » : PolyForm Noncommercial n'est pas une licence open
+> source au sens de l'OSI (elle exclut l'usage commercial). Le code est lisible, modifiable et
+> partageable, mais pas librement exploitable commercialement.
+
+### Licence des données
+
+La licence du code ne s'applique **pas** aux données affichées par le site ou servies par
+l'API. Elles relèvent chacune de leur propre licence :
+
+| Données | Source | Licence | Attribution attendue |
+|---------|--------|---------|----------------------|
+| Fiches associations (nom, objet, adresse, n° RNA, site déclaré) | [RNA — Ministère de l'Intérieur](https://www.data.gouv.fr/fr/datasets/repertoire-national-des-associations/) via data.gouv.fr | [Licence Ouverte 2.0 (Etalab)](https://www.etalab.gouv.fr/licence-ouverte-open-licence/) | « Ministère de l'Intérieur — RNA » |
+| Géolocalisation des adresses | [Base Adresse Nationale](https://adresse.data.gouv.fr/) | Licence Ouverte 2.0 (Etalab) | « BAN » |
+| **Enrichissements GemensKarte** (catégorie, site web vérifié, réseaux sociaux, corrections) | produits par ce projet | Licence Ouverte 2.0 (Etalab) | « GemensKarte — gemenskarte.fr » |
+| Fond de carte | [OpenStreetMap](https://www.openstreetmap.org/copyright) | [ODbL 1.0](https://opendatacommons.org/licenses/odbl/) | « © les contributeurs d'OpenStreetMap » |
+| Événements | [OpenAgenda](https://openagenda.com/) | licence propre à chaque agenda | selon l'agenda |
+
+Concrètement : tu peux **réutiliser librement** les fiches et les enrichissements (y compris
+dans un usage commercial, c'est la Licence Ouverte qui s'applique, pas PolyForm), à condition de
+citer la source et la date d'extraction. Seul le **code** de l'application est limité à l'usage
+non commercial.
