@@ -151,7 +151,7 @@ footer a{color:var(--muted)}
   <a class="cta" href="/">Voir la carte interactive →</a>
 </header>
 ${o.body}
-<footer>Données issues du Répertoire National des Associations (RNA, data.gouv.fr), enrichies automatiquement par GemensKarte. · <a href="/">Accueil</a></footer>
+<footer>Données issues du Répertoire National des Associations (RNA, data.gouv.fr) et enrichissements GemensKarte, sous <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/" rel="license">Licence Ouverte 2.0</a> (réutilisation libre avec mention de la source). · <a href="/">Accueil</a></footer>
 </div></body></html>`;
   }
 

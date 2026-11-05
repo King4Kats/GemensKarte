@@ -17,6 +17,8 @@ GemensKarte recense les associations loi 1901 par commune et par département, d
 
 ## À propos
 
-- Source des données: Répertoire National des Associations (RNA), Ministère de l'Intérieur, via data.gouv.fr.
-- Cartographie: OpenStreetMap.
+- Source des données: Répertoire National des Associations (RNA), Ministère de l'Intérieur, via data.gouv.fr — Licence Ouverte 2.0 (Etalab).
+- Enrichissements GemensKarte (catégories, sites, réseaux sociaux): Licence Ouverte 2.0 (Etalab), attribution « GemensKarte — gemenskarte.fr ». Réutilisation libre, y compris commerciale, avec mention de la source.
+- Cartographie: © les contributeurs d'OpenStreetMap, ODbL.
+- Code de l'application: PolyForm Noncommercial 1.0.0 (code ouvert, usage non commercial) — https://github.com/King4Kats/GemensKarte
 - Site et contact: https://flavienauvray.me/
