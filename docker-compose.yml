@@ -2,7 +2,7 @@
 # Lance PostgreSQL+PostGIS et Meilisearch. L'API tourne sur l'hôte (pnpm dev:api).
 services:
   db:
-    image: postgis/postgis:16-3.6
+    image: postgis/postgis:16-3.4
     container_name: gemenskarte-db
     restart: unless-stopped
     environment:
