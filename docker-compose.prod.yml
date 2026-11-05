@@ -3,7 +3,7 @@
 # 5432 est déjà pris par Supabase sur la machine).
 services:
   db:
-    image: postgis/postgis:16-3.4
+    image: postgis/postgis:16-3.6
     container_name: gk-db
     restart: unless-stopped
     environment:
